@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- CO5: Security Headers -->
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; font-src https://fonts.gstatic.com;">
+  <meta http-equiv="Referrer-Policy" content="no-referrer">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Dashboard — Digital Smart Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ── STUDENT DASHBOARD EXTRAS ── */
+    .section { display: none; animation: fadeUp 0.35s ease; }
+    .section.active { display: block; }
+
+    .book-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem;
+      position: relative; overflow: hidden;
+      transition: all var(--transition); cursor: pointer;
+    }
+    .book-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--cyan), var(--purple));
+      opacity: 0; transition: opacity var(--transition);
+    }
+    .book-card:hover { border-color: rgba(0,212,255,0.35); transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+    .book-card:hover::before { opacity: 1; }
+    .book-cover { font-size: 2.5rem; display: block; margin-bottom: 0.75rem; }
+    .book-cat {
+      font-family: var(--font-mono); font-size: 0.58rem; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--cyan); margin-bottom: 0.4rem;
+      background: var(--cyan-dim); padding: 2px 8px; border-radius: 4px;
+      display: inline-block;
+    }
+    .book-title { font-size: 0.875rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; line-height: 1.3; }
+    .book-author { font-size: 0.72rem; color: var(--text3); margin-bottom: 0.5rem; }
+    .book-meta { display: flex; align-items: center; justify-content: space-between; }
+    .book-rating { font-family: var(--font-mono); font-size: 0.7rem; color: var(--amber); }
+    .book-diff {
+      font-size: 0.6rem; font-family: var(--font-mono); padding: 2px 6px;
+      border-radius: 4px; text-transform: uppercase;
+    }
+    .diff-Beginner     { background: var(--green-dim); color: var(--green); }
+    .diff-Intermediate { background: var(--amber-dim); color: var(--amber); }
+    .diff-Advanced     { background: var(--red-dim);   color: var(--red);   }
+
+    .books-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    .fav-btn { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 4px; border-radius: 50%; transition: transform var(--transition); }
+    .fav-btn:hover { transform: scale(1.2); }
+
+    /* Fine alert */
+    .fine-alert {
+      background: rgba(255,77,109,0.08); border: 1px solid rgba(255,77,109,0.3);
+      border-radius: var(--radius); padding: 1rem 1.25rem;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;
+    }
+    .fine-alert-text { font-size: 0.9rem; color: var(--red); }
+    .fine-alert-text strong { font-family: var(--font-mono); }
+
+    /* issued books */
+    .issued-row {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 0.85rem; border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .issued-row:last-child { border-bottom: none; }
+    .issued-cover { font-size: 1.8rem; }
+    .issued-info { flex: 1; min-width: 150px; }
+    .issued-title { font-size: 0.875rem; font-weight: 600; color: var(--text); }
+    .issued-dates { font-size: 0.72rem; color: var(--text3); margin-top: 2px; }
+    .issued-status { font-size: 0.78rem; }
+
+    /* Modal */
+    .modal-cover-strip {
+      height: 100px;
+      background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(155,89,255,0.15));
+      border-radius: 18px 18px 0 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-inner { padding: 1.5rem; }
+    .modal-book-cat { font-family: var(--font-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--cyan); background: var(--cyan-dim); padding: 3px 10px; border-radius: 4px; display: inline-block; margin-bottom: 0.75rem; }
+    .modal-book-title { font-size: 1.4rem; font-weight: 700; color: var(--text); margin-bottom: 0.3rem; }
+    .modal-book-author { font-size: 0.875rem; color: var(--text2); margin-bottom: 1rem; }
+    .modal-stats-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .modal-stat-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 1rem; text-align: center; }
+    .mst-val { font-family: var(--font-mono); font-size: 1rem; font-weight: 700; color: var(--text); }
+    .mst-lbl { font-size: 0.62rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; }
+    .modal-section-lbl { font-size: 0.82rem; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin: 1rem 0 0.5rem; }
+    .modal-desc { font-size: 0.875rem; color: var(--text2); line-height: 1.7; }
+    .concepts-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .concept-chip { font-size: 0.72rem; padding: 3px 10px; border-radius: 5px; background: var(--purple-dim); border: 1px solid rgba(155,89,255,0.2); color: #c4b5fd; }
+    .modal-btns { display: flex; gap: 0.75rem; margin-top: 1.25rem; flex-wrap: wrap; }
+    .modal-btn { flex: 1; min-width: 120px; padding: 0.7rem 1rem; border-radius: 10px; font-size: 0.875rem; font-weight: 600; border: 1px solid; text-align: center; transition: all var(--transition); cursor: pointer; }
+    .mbtn-primary { background: var(--cyan-dim); color: var(--cyan); border-color: rgba(0,212,255,0.4); }
+    .mbtn-primary:hover { background: rgba(0,212,255,0.2); }
+    .mbtn-fav { background: var(--red-dim); color: var(--red); border-color: rgba(255,77,109,0.4); }
+    .mbtn-fav:hover, .mbtn-fav.active { background: rgba(255,77,109,0.2); }
+
+    /* Filter chips */
+    .filter-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .chip { font-size: 0.78rem; font-weight: 500; padding: 0.35rem 0.85rem; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); transition: all var(--transition); cursor: pointer; }
+    .chip:hover { border-color: var(--border2); color: var(--text); }
+    .chip.active { background: var(--cyan-dim); border-color: rgba(0,212,255,0.4); color: var(--cyan); }
+
+    /* History items */
+    .hist-item { display: flex; align-items: center; gap: 12px; padding: 0.75rem; border-bottom: 1px solid var(--border); }
+    .hist-item:last-child { border-bottom: none; }
+    .hist-cover { font-size: 1.6rem; }
+    .hist-info { flex: 1; }
+    .hist-title { font-size: 0.875rem; font-weight: 600; color: var(--text); }
+    .hist-meta { font-size: 0.72rem; color: var(--text3); }
+    .hist-time { font-family: var(--font-mono); font-size: 0.65rem; color: var(--text3); flex-shrink: 0; }
+
+    /* Profile */
+    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .profile-avatar-wrap { text-align: center; }
+    .profile-avatar-big {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; font-weight: 700; color: var(--bg);
+      margin: 0 auto 0.75rem;
+    }
+    .profile-name { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+    .profile-role { font-size: 0.8rem; color: var(--text3); }
+    .profile-stats { list-style: none; }
+    .profile-stats li { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .profile-stats li:last-child { border-bottom: none; }
+    .ps-label { color: var(--text3); }
+    .ps-val { color: var(--text); font-weight: 600; font-family: var(--font-mono); font-size: 0.8rem; }
+
+    @media(max-width:700px) { .profile-grid { grid-template-columns: 1fr; } }
+
+    /* ── GOAL SELECTION OVERLAY ── */
+    .goal-overlay {
+      position: fixed; inset: 0; z-index: 900;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      overflow-y: auto; padding: 2rem;
+    }
+    .goal-overlay.hidden { display: none !important; }
+    .goal-content { text-align: center; max-width: 860px; width: 100%; animation: fadeUp 0.5s ease; }
+    .goal-badge {
+      display: inline-block; font-family: var(--font-mono);
+      font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--cyan); border: 1px solid rgba(0,212,255,0.3);
+      padding: 5px 16px; border-radius: 20px; margin-bottom: 1.25rem;
+      background: rgba(0,212,255,0.05);
+    }
+    .goal-heading {
+      font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700;
+      color: var(--text); margin-bottom: 0.5rem; line-height: 1.1;
+    }
+    .goal-heading em {
+      font-style: italic;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .goal-sub { font-size: 0.95rem; color: var(--text2); margin-bottom: 2rem; }
+    .goal-cards { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .goal-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.75rem 1.5rem;
+      width: 185px; text-align: center; cursor: pointer;
+      transition: all var(--transition); position: relative; overflow: hidden;
+    }
+    .goal-card:hover {
+      border-color: var(--cyan); background: rgba(0,212,255,0.06);
+      transform: translateY(-6px); box-shadow: 0 10px 32px rgba(0,212,255,0.15);
+    }
+    .goal-card-glow {
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% 0%, rgba(0,212,255,0.15), transparent 70%);
+      opacity: 0; transition: opacity var(--transition);
+    }
+    .goal-card:hover .goal-card-glow { opacity: 1; }
+    .goal-icon { font-size: 2.4rem; display: block; margin-bottom: 0.65rem; }
+    .goal-title { font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 0.3rem; }
+    .goal-desc { font-size: 0.72rem; color: var(--text3); line-height: 1.4; }
+    .goal-tag {
+      display: inline-block; margin-top: 0.6rem;
+      font-family: var(--font-mono); font-size: 0.55rem;
+      letter-spacing: 0.1em; padding: 2px 8px; border-radius: 4px;
+      background: rgba(0,212,255,0.1); color: var(--cyan);
+      border: 1px solid rgba(0,212,255,0.2);
+    }
+
+    /* ── SEMESTER PREP DRILL-DOWN ── */
+    .drill-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.82rem; color: var(--text2); cursor: pointer;
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 0.4rem 0.9rem; border-radius: var(--radius-sm);
+      transition: all var(--transition); margin-bottom: 1.25rem;
+    }
+    .drill-back:hover { border-color: var(--cyan); color: var(--cyan); }
+    .tab-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .tab-btn {
+      padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.82rem; font-weight: 600;
+      border: 1px solid var(--border); background: var(--surface); color: var(--text2);
+      cursor: pointer; transition: all var(--transition);
+    }
+    .tab-btn:hover { border-color: var(--border2); color: var(--text); }
+    .tab-btn.active { background: var(--cyan-dim); border-color: rgba(0,212,255,0.4); color: var(--cyan); }
+    .subject-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1rem;
+    }
+    .subject-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.2rem;
+      transition: all var(--transition); cursor: pointer; position: relative; overflow: hidden;
+    }
+    .subject-card:hover { border-color: rgba(0,212,255,0.4); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .subject-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--cyan), var(--purple));
+      opacity: 0; transition: opacity var(--transition);
+    }
+    .subject-card:hover::before { opacity: 1; }
+    .scard-icon { font-size: 1.8rem; display: block; margin-bottom: 0.5rem; }
+    .scard-code {
+      font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--cyan); background: var(--cyan-dim);
+      padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 0.35rem;
+    }
+    .scard-name { font-size: 0.875rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; line-height: 1.3; }
+    .scard-desc { font-size: 0.72rem; color: var(--text3); line-height: 1.45; }
+
+    @media(max-width:600px) {
+      .goal-cards { gap: 0.75rem; }
+      .goal-card { width: 150px; padding: 1.25rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="orb-wrap">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- ════ GOAL SELECTION OVERLAY ════ -->
+  <div class="goal-overlay" id="goal-overlay">
+    <div class="goal-content">
+      <span class="goal-badge">CHOOSE YOUR LEARNING PATH</span>
+      <h1 class="goal-heading">What are you<br><em>preparing for?</em></h1>
+      <p class="goal-sub">Pick a goal and we'll show you the most relevant books and resources.</p>
+      <div class="goal-cards">
+        <div class="goal-card" onclick="selectGoal('placement')">
+          <div class="goal-card-glow"></div>
+          <span class="goal-icon">🎯</span>
+          <div class="goal-title">Placement Prep</div>
+          <div class="goal-desc">DSA, System Design, aptitude &amp; FAANG interview resources</div>
+          <span class="goal-tag">PLACEMENTS</span>
+        </div>
+        <div class="goal-card" onclick="selectGoal('semester')">
+          <div class="goal-card-glow"></div>
+          <span class="goal-icon">📘</span>
+          <div class="goal-title">Semester Prep</div>
+          <div class="goal-desc">Subject-wise resources for your year and branch</div>
+          <span class="goal-tag">ACADEMICS</span>
+        </div>
+        <div class="goal-card" onclick="selectGoal('personality')">
+          <div class="goal-card-glow"></div>
+          <span class="goal-icon">🌟</span>
+          <div class="goal-title">Personality Development</div>
+          <div class="goal-desc">Habits, productivity, mindset &amp; communication skills</div>
+          <span class="goal-tag">GROWTH</span>
+        </div>
+        <div class="goal-card" onclick="selectGoal('novels')">
+          <div class="goal-card-glow"></div>
+          <span class="goal-icon">📖</span>
+          <div class="goal-title">Novel Reading</div>
+          <div class="goal-desc">Fiction, classics &amp; storytelling for leisure and imagination</div>
+          <span class="goal-tag">READING</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <header class="sidebar-header">
+      <div class="sidebar-logo">
+        <span class="logo-icon">📚</span>
+        <div class="logo-text">Smart<span>Lib</span></div>
+      </div>
+    </header>
+    <div class="sidebar-user-card">
+      <div class="user-avatar" id="sb-avatar">S</div>
+      <div>
+        <div class="user-name" id="sb-name">Student</div>
+        <span class="user-role-chip">🎓 STUDENT</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-sec="dashboard" onclick="navigate('dashboard',this)">
+        <span class="nav-icon">🏠</span><span class="nav-text">Dashboard</span>
+      </a>
+      <a class="nav-item" data-sec="semester" onclick="navigate('semester',this)">
+        <span class="nav-icon">📘</span><span class="nav-text">Semester Prep</span>
+      </a>
+      <a class="nav-item" data-sec="explore" onclick="navigate('explore',this)">
+        <span class="nav-icon">🔍</span><span class="nav-text">Explore Books</span>
+      </a>
+      <a class="nav-item" data-sec="issued" onclick="navigate('issued',this)">
+        <span class="nav-icon">📖</span><span class="nav-text">Issued Books</span>
+      </a>
+      <a class="nav-item" data-sec="favorites" onclick="navigate('favorites',this)">
+        <span class="nav-icon">❤️</span><span class="nav-text">Favorites</span>
+        <span class="badge badge-red" id="fav-count" style="display:none">0</span>
+      </a>
+      <a class="nav-item" data-sec="history" onclick="navigate('history',this)">
+        <span class="nav-icon">🕐</span><span class="nav-text">Reading History</span>
+      </a>
+      <a class="nav-item" data-sec="profile" onclick="navigate('profile',this)">
+        <span class="nav-icon">👤</span><span class="nav-text">My Profile</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <button class="hamburger" id="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+  <div class="sidebar-overlay" id="sb-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content page-wrap" id="main">
+
+    <!-- DASHBOARD -->
+    <section id="sec-dashboard" class="section active">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" id="dash-title">Good morning! 👋</h1>
+          <p class="page-subtitle">Welcome back to your learning dashboard</p>
+        </div>
+      </div>
+
+      <!-- Fine Alert -->
+      <div id="fine-alert" class="fine-alert hidden">
+        <div class="fine-alert-text">⚠️ You have an outstanding fine of <strong id="fine-amount">₹0</strong>. Please clear it to continue borrowing.</div>
+        <button class="btn btn-danger btn-sm" onclick="navigate('profile',document.querySelector('[data-sec=profile]'))">View Details</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" id="dash-stats"></div>
+
+      <!-- Content Grid -->
+      <div style="display:grid; grid-template-columns:1fr 320px; gap:1.5rem; align-items:start;" id="dash-grid">
+        <div>
+          <div class="glass-card">
+            <div class="card-head">
+              <h2 class="card-heading">📖 Recommended Books</h2>
+              <button class="btn btn-secondary btn-sm" onclick="navigate('explore',document.querySelector('[data-sec=explore]'))">View All →</button>
+            </div>
+            <div class="books-grid" id="dash-rec"></div>
+          </div>
+        </div>
+        <div>
+          <div class="glass-card">
+            <div class="card-head"><h2 class="card-heading">🕐 Recently Viewed</h2></div>
+            <div id="dash-recent"></div>
+          </div>
+          <div class="glass-card">
+            <div class="card-head"><h2 class="card-heading">📊 Quick Stats</h2></div>
+            <div id="dash-qstats"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEMESTER PREP -->
+    <section id="sec-semester" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">📘 Semester Prep</h1>
+          <p class="page-subtitle">Select your branch and year to see subject resources</p>
+        </div>
+        <button class="drill-back" onclick="showGoalOverlay()">⚡ Change Goal</button>
+      </div>
+
+      <!-- Branch selector -->
+      <div id="sem-branch-screen">
+        <p style="font-size:0.85rem;color:var(--text3);margin-bottom:1rem;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.08em">Select your branch</p>
+        <div class="tab-row" id="branch-tabs">
+          <button class="tab-btn" onclick="selectBranch('CSE',this)">💻 CSE</button>
+          <button class="tab-btn" onclick="selectBranch('CSIT',this)">🖥️ CSIT</button>
+          <button class="tab-btn" onclick="selectBranch('ECE',this)">📡 ECE</button>
+          <button class="tab-btn" onclick="selectBranch('AIDS',this)">🤖 AIDS</button>
+        </div>
+
+        <!-- Year selector (hidden until branch chosen) -->
+        <div id="year-row" class="hidden">
+          <p style="font-size:0.85rem;color:var(--text3);margin-bottom:0.75rem;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.08em">Select your year</p>
+          <div class="tab-row">
+            <button class="tab-btn" onclick="selectYear(1,this)">Year 1</button>
+            <button class="tab-btn" onclick="selectYear(2,this)">Year 2</button>
+            <button class="tab-btn" onclick="selectYear(3,this)">Year 3</button>
+            <button class="tab-btn" onclick="selectYear(4,this)">Year 4</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subjects grid (hidden until year chosen) -->
+      <div id="subjects-container" class="hidden">
+        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.25rem;flex-wrap:wrap">
+          <button class="drill-back" onclick="backToYearSelect()">← Back</button>
+          <span id="sem-breadcrumb" style="font-size:0.85rem;color:var(--text2)"></span>
+        </div>
+        <div class="subject-grid" id="subjects-grid"></div>
+        <div id="subj-books-panel" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- EXPLORE BOOKS -->
+    <section id="sec-explore" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">🔍 Explore Books</h1>
+          <p class="page-subtitle">Browse and search the full library catalog</p>
+        </div>
+      </div>
+      <!-- CO5 Semantic: label + search role -->
+      <div class="search-wrap" style="margin-bottom:1rem" role="search">
+        <label for="explore-search" class="sr-only">Search books</label>
+        <span class="search-icon" aria-hidden="true">🔍</span>
+        <input type="search" id="explore-search" class="search-input"
+          placeholder="Search by title, author, category…"
+          autocomplete="off" aria-label="Search library books">
+      </div>
+      <div class="filter-row" id="cat-filters"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+        <span id="explore-count" style="font-size:0.78rem;color:var(--text3)"></span>
+        <select id="explore-sort" class="form-select" style="width:auto;padding:0.35rem 0.75rem" onchange="renderExplore()">
+          <option value="popularity">⭐ Popularity</option>
+          <option value="rating">📈 Rating</option>
+          <option value="title">🔤 A–Z</option>
+        </select>
+      </div>
+      <div class="books-grid" id="explore-grid"></div>
+    </section>
+
+    <!-- ISSUED BOOKS -->
+    <section id="sec-issued" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">📖 Issued Books</h1>
+          <p class="page-subtitle">Books currently borrowed from the library</p>
+        </div>
+      </div>
+      <!-- CO5 Semantic: output element for dynamic fine total -->
+      <div class="glass-card" style="padding:0.75rem 1.25rem;margin-bottom:0.75rem;display:flex;align-items:center;gap:0.75rem">
+        <span style="font-size:0.85rem;color:var(--text2)">Total borrow fees on this account:</span>
+        <output id="issued-fine-total" style="font-family:var(--font-mono);font-weight:700;font-size:1rem;color:var(--cyan)">₹0</output>
+      </div>
+      <div class="glass-card" style="padding:0">
+        <div id="issued-list"></div>
+      </div>
+    </section>
+
+    <!-- FAVORITES -->
+    <section id="sec-favorites" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">❤️ My Favorites</h1>
+          <p class="page-subtitle">Books you've saved to your collection</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="navigate('explore',document.querySelector('[data-sec=explore]'))">+ Add More</button>
+      </div>
+      <div class="books-grid" id="fav-grid"></div>
+    </section>
+
+    <!-- READING HISTORY -->
+    <section id="sec-history" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">🕐 Reading History</h1>
+          <p class="page-subtitle">Books you've explored and read</p>
+        </div>
+      </div>
+      <div class="glass-card">
+        <div id="hist-list"></div>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="sec-profile" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">👤 My Profile</h1>
+          <p class="page-subtitle">Your account and fine details</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start">
+        <!-- Profile Info -->
+        <div class="glass-card">
+          <div class="card-head"><h2 class="card-heading">Account Information</h2></div>
+          <div style="text-align:center;margin-bottom:1.5rem">
+            <div class="profile-avatar-big" id="prof-avatar">S</div>
+            <div class="profile-name" id="prof-name">Student Name</div>
+            <div class="profile-role">Student Member</div>
+          </div>
+          <ul class="profile-stats" id="prof-stats"></ul>
+        </div>
+
+        <!-- Fine Details -->
+        <div class="glass-card">
+          <div class="card-head"><h2 class="card-heading">💰 Fine Details</h2></div>
+          <div id="fine-detail-wrap"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Book Detail Modal -->
+  <div id="book-modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box modal-box-wide" style="padding:0;max-width:580px">
+      <button class="modal-close-btn" onclick="closeModal()">✕</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- STUDENT BORROW DATE MODAL -->
+  <div id="student-borrow-modal" class="modal-overlay" onclick="if(event.target===this)closeStudentBorrowModal()">
+    <div class="modal-box" style="max-width:420px">
+      <button class="modal-close-btn" onclick="closeStudentBorrowModal()">✕</button>
+      <div class="modal-title">📖 Borrow Book</div>
+      <div style="font-size:0.85rem;color:var(--text2);margin-bottom:1.25rem" id="sbm-book-info"></div>
+      <input type="hidden" id="sbm-book-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group"><label class="form-label">Issue Date</label><input type="date" id="sbm-issue-date" class="form-input"></div>
+        <div class="form-group"><label class="form-label">Due Date</label><input type="date" id="sbm-due-date" class="form-input"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeStudentBorrowModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmStudentBorrow()">📖 Confirm Borrow</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+  <script>
+    // ── DEFAULT SUBJECTS DATABASE ──
+    const DEFAULT_SUBJECTS = {
+      CSE: {
+        1: [
+          { id:'cse1_1', code:'DSA1', name:'Data Structures & Algorithms I', icon:'🌲', desc:'Arrays, Linked Lists, Stacks, Queues, basic Trees' },
+          { id:'cse1_2', code:'DSA2', name:'Data Structures & Algorithms II', icon:'🔄', desc:'Graphs, Heaps, Advanced Trees, Algorithm Design' },
+          { id:'cse1_3', code:'DM', name:'Discrete Mathematics', icon:'∑', desc:'Logic, Sets, Graph Theory, Combinatorics, Induction' },
+          { id:'cse1_4', code:'JAVA', name:'Java Programming', icon:'☕', desc:'OOP concepts, Collections, Streams, Exception Handling' },
+          { id:'cse1_5', code:'FWD', name:'Front-End Web Development', icon:'🌐', desc:'HTML, CSS, JavaScript, React fundamentals' },
+          { id:'cse1_6', code:'DDCA', name:'Digital Design for Computer Architecture', icon:'💡', desc:'Logic Gates, Boolean Algebra, Combinational & Sequential Circuits' },
+          { id:'cse1_7', code:'DBMS', name:'Database Management Systems', icon:'🗃️', desc:'SQL, ER Diagrams, Normalization, Transactions, ACID' },
+          { id:'cse1_8', code:'MDSA', name:'Mathematics for Data Science & Analytics', icon:'📊', desc:'Statistics, Probability, Linear Algebra for ML/DS' },
+          { id:'cse1_9', code:'AOOP', name:'Advanced Object Oriented Programming', icon:'🧩', desc:'Design Patterns, SOLID Principles, Generics, Reflection' },
+          { id:'cse1_10', code:'AI', name:'Artificial Intelligence', icon:'🤖', desc:'Search Algorithms, Knowledge Representation, ML Basics, NLP' }
+        ],
+        2: [
+          { id:'cse2_1', code:'OS', name:'Operating Systems', icon:'⚙️', desc:'Processes, Threads, Scheduling, Memory Management, File Systems' },
+          { id:'cse2_2', code:'CN', name:'Computer Networks', icon:'🌐', desc:'OSI Model, TCP/IP, DNS, HTTP, Routing Protocols' },
+          { id:'cse2_3', code:'TOC', name:'Theory of Computation', icon:'🔁', desc:'Automata, Grammars, Turing Machines, Complexity Classes' },
+          { id:'cse2_4', code:'SE', name:'Software Engineering', icon:'🛠️', desc:'SDLC, Agile, UML, Testing, Project Management' },
+          { id:'cse2_5', code:'DAA', name:'Design & Analysis of Algorithms', icon:'📐', desc:'Greedy, Divide & Conquer, Dynamic Programming, NP-Completeness' },
+          { id:'cse2_6', code:'COA', name:'Computer Organization & Architecture', icon:'🏗️', desc:'CPU Design, Pipelining, Cache Memory, I/O Systems' },
+          { id:'cse2_7', code:'MP', name:'Microprocessors & Embedded Systems', icon:'🔬', desc:'8086 Architecture, Assembly, Interfacing, Embedded C' },
+          { id:'cse2_8', code:'EVS', name:'Environmental Science', icon:'🌿', desc:'Ecology, Pollution, Sustainability, Environmental Laws' }
+        ],
+        3: [
+          { id:'cse3_1', code:'ML', name:'Machine Learning', icon:'🧠', desc:'Regression, Classification, Clustering, Feature Engineering' },
+          { id:'cse3_2', code:'DL', name:'Deep Learning', icon:'🔥', desc:'Neural Networks, CNN, RNN, Transformers, GANs' },
+          { id:'cse3_3', code:'CC', name:'Cloud Computing', icon:'☁️', desc:'AWS/Azure/GCP, Virtualization, Containers, Serverless' },
+          { id:'cse3_4', code:'IS', name:'Information Security', icon:'🔐', desc:'Cryptography, Network Security, Ethical Hacking basics' },
+          { id:'cse3_5', code:'WD', name:'Web Development (Full Stack)', icon:'💻', desc:'Node.js, React, REST APIs, MongoDB, Deployment' },
+          { id:'cse3_6', code:'DC', name:'Distributed Computing', icon:'🔗', desc:'Map-Reduce, Consensus Algorithms, Fault Tolerance' },
+          { id:'cse3_7', code:'CD', name:'Compiler Design', icon:'⚡', desc:'Lexical Analysis, Parsing, Semantic Analysis, Code Generation' },
+          { id:'cse3_8', code:'PE', name:'Professional Ethics', icon:'⚖️', desc:'Engineering Ethics, Intellectual Property, Cyber Law' }
+        ],
+        4: [
+          { id:'cse4_1', code:'BD', name:'Big Data Analytics', icon:'📦', desc:'Hadoop, Spark, HDFS, Data Pipelines, Real-time Processing' },
+          { id:'cse4_2', code:'IOT', name:'Internet of Things', icon:'📡', desc:'IoT Architecture, Sensors, Protocols, Edge Computing' },
+          { id:'cse4_3', code:'BC', name:'Blockchain Technology', icon:'⛓️', desc:'Consensus, Smart Contracts, Ethereum, DeFi basics' },
+          { id:'cse4_4', code:'CV', name:'Computer Vision', icon:'👁️', desc:'Image Processing, Object Detection, OpenCV, YOLO' },
+          { id:'cse4_5', code:'NLP', name:'Natural Language Processing', icon:'📝', desc:'Tokenization, Transformers, BERT, Sentiment Analysis' },
+          { id:'cse4_6', code:'SD', name:'Software Design & Architecture', icon:'🏛️', desc:'Microservices, Design Patterns, System Design, APIs' },
+          { id:'cse4_7', code:'RP', name:'Research Project / Capstone', icon:'🔬', desc:'Industry-level project spanning the final year' },
+          { id:'cse4_8', code:'EL', name:'Elective: Advanced Topics', icon:'🎯', desc:'AR/VR, Quantum Computing, Autonomous Systems' }
+        ]
+      },
+      CSIT: {
+        1: [
+          { id:'csit1_1', code:'DSA1', name:'Data Structures & Algorithms I', icon:'🌲', desc:'Arrays, Linked Lists, Stacks, Queues, Trees basics' },
+          { id:'csit1_2', code:'DSA2', name:'Data Structures & Algorithms II', icon:'🔄', desc:'Graphs, Heaps, Advanced Trees, Algorithm Design' },
+          { id:'csit1_3', code:'DM', name:'Discrete Mathematics', icon:'∑', desc:'Logic, Sets, Graph Theory, Combinatorics, Induction' },
+          { id:'csit1_4', code:'JAVA', name:'Java Programming', icon:'☕', desc:'OOP concepts, Collections, Streams, Exception Handling' },
+          { id:'csit1_5', code:'FWD', name:'Front-End Web Development', icon:'🌐', desc:'HTML, CSS, JavaScript, React fundamentals' },
+          { id:'csit1_6', code:'DDCA', name:'Digital Design for Computer Architecture', icon:'💡', desc:'Logic Gates, Boolean Algebra, Sequential Circuits' },
+          { id:'csit1_7', code:'DBMS', name:'Database Management Systems', icon:'🗃️', desc:'SQL, ER Diagrams, Normalization, Transactions' },
+          { id:'csit1_8', code:'MDSA', name:'Mathematics for Data Science & Analytics', icon:'📊', desc:'Statistics, Probability, Linear Algebra for ML/DS' },
+          { id:'csit1_9', code:'AOOP', name:'Advanced Object Oriented Programming', icon:'🧩', desc:'Design Patterns, SOLID Principles, Generics' },
+          { id:'csit1_10', code:'AI', name:'Artificial Intelligence', icon:'🤖', desc:'Search Algorithms, Knowledge Representation, ML Basics' }
+        ],
+        2: [
+          { id:'csit2_1', code:'OS', name:'Operating Systems', icon:'⚙️', desc:'Processes, Scheduling, Memory Management, File Systems' },
+          { id:'csit2_2', code:'CN', name:'Computer Networks', icon:'🌐', desc:'OSI Model, TCP/IP, Routing, Network Security' },
+          { id:'csit2_3', code:'SE', name:'Software Engineering', icon:'🛠️', desc:'SDLC, Agile, UML, Testing Methodologies' },
+          { id:'csit2_4', code:'DAA', name:'Design & Analysis of Algorithms', icon:'📐', desc:'Greedy, Dynamic Programming, NP-Completeness' },
+          { id:'csit2_5', code:'IT', name:'Information Theory', icon:'📡', desc:'Entropy, Coding, Data Compression, Channel Capacity' },
+          { id:'csit2_6', code:'WT', name:'Web Technologies', icon:'💻', desc:'HTML5, CSS3, JavaScript, AJAX, Web Frameworks' },
+          { id:'csit2_7', code:'PM', name:'Project Management', icon:'📋', desc:'Agile, Scrum, Risk Management, Cost Estimation' },
+          { id:'csit2_8', code:'DW', name:'Data Warehousing', icon:'🏢', desc:'ETL, OLAP, Star Schema, Data Marts' }
+        ],
+        3: [
+          { id:'csit3_1', code:'ML', name:'Machine Learning', icon:'🧠', desc:'Supervised, Unsupervised, Feature Engineering, Model Evaluation' },
+          { id:'csit3_2', code:'DS', name:'Data Science', icon:'📉', desc:'Pandas, NumPy, EDA, Visualization, Statistical Inference' },
+          { id:'csit3_3', code:'CC', name:'Cloud Computing', icon:'☁️', desc:'Cloud Services, Virtualization, Containers, DevOps' },
+          { id:'csit3_4', code:'IS', name:'Information Security', icon:'🔐', desc:'Cryptography, PKI, Firewalls, Penetration Testing' },
+          { id:'csit3_5', code:'MO', name:'Mobile App Development', icon:'📱', desc:'Android/iOS, Flutter, React Native, App Lifecycle' },
+          { id:'csit3_6', code:'BA', name:'Business Analytics', icon:'📈', desc:'Tableau, Power BI, KPIs, Predictive Analytics' },
+          { id:'csit3_7', code:'NLP', name:'Natural Language Processing', icon:'📝', desc:'Text Processing, Sentiment Analysis, BERT, ChatBots' },
+          { id:'csit3_8', code:'PE', name:'Professional Ethics & Cyber Law', icon:'⚖️', desc:'IT Act, Data Privacy, Ethics in AI, Cybercrime' }
+        ],
+        4: [
+          { id:'csit4_1', code:'BD', name:'Big Data Technologies', icon:'📦', desc:'Hadoop, Spark, Kafka, Hive, Real-time Streaming' },
+          { id:'csit4_2', code:'AI2', name:'Advanced AI & Deep Learning', icon:'🔥', desc:'CNN, LSTM, GAN, Reinforcement Learning, AutoML' },
+          { id:'csit4_3', code:'BC', name:'Blockchain & Fintech', icon:'⛓️', desc:'DLT, Smart Contracts, Cryptocurrency, DeFi' },
+          { id:'csit4_4', code:'CY', name:'Cybersecurity Management', icon:'🛡️', desc:'SIEM, SOC, Incident Response, ISO 27001' },
+          { id:'csit4_5', code:'ERP', name:'Enterprise Resource Planning', icon:'🏭', desc:'SAP, Oracle ERP, ERP Implementation, Business Processes' },
+          { id:'csit4_6', code:'RP', name:'Research Project / Capstone', icon:'🔬', desc:'Industry-level project spanning the final year' },
+          { id:'csit4_7', code:'INT', name:'Internship & Industry Training', icon:'🏢', desc:'Real-world exposure, Industry mentoring, Report submission' },
+          { id:'csit4_8', code:'EL', name:'Elective: Emerging Technologies', icon:'🚀', desc:'Quantum Computing, AR/VR, Digital Twin, Edge AI' }
+        ]
+      },
+      ECE: {
+        1: [
+          { id:'ece1_1', code:'BEE', name:'Basic Electrical Engineering', icon:'⚡', desc:"Circuits, Ohm's Law, KVL/KCL, AC/DC Analysis" },
+          { id:'ece1_2', code:'EDT', name:'Electronic Devices & Theory', icon:'💡', desc:'Diodes, Transistors, MOSFETs, Operational Amplifiers' },
+          { id:'ece1_3', code:'DM', name:'Discrete Mathematics', icon:'∑', desc:'Logic, Sets, Graph Theory, Combinatorics' },
+          { id:'ece1_4', code:'DDCA', name:'Digital Design for Computer Architecture', icon:'🔌', desc:'Logic Gates, Flip-Flops, Counters, Multiplexers' },
+          { id:'ece1_5', code:'PIC', name:'Programming for IoT & Control', icon:'🐍', desc:'C/Python, Embedded basics, GPIO control' },
+          { id:'ece1_6', code:'SS', name:'Signals & Systems', icon:'〰️', desc:'Fourier, Laplace, Z-Transform, Convolution' },
+          { id:'ece1_7', code:'MDSA', name:'Mathematics for Data Science & Analytics', icon:'📊', desc:'Statistics, Probability, Linear Algebra' },
+          { id:'ece1_8', code:'EM', name:'Engineering Mathematics', icon:'➗', desc:'Calculus, Differential Equations, Complex Analysis' },
+          { id:'ece1_9', code:'FWD', name:'Front-End Web Development', icon:'🌐', desc:'HTML, CSS, JavaScript basics' },
+          { id:'ece1_10', code:'AI', name:'Artificial Intelligence Fundamentals', icon:'🤖', desc:'AI basics, Search Algorithms, ML introduction' }
+        ],
+        2: [
+          { id:'ece2_1', code:'AEC', name:'Analog Electronics Circuits', icon:'📻', desc:'Amplifiers, Oscillators, Feedback, Power Amplifiers' },
+          { id:'ece2_2', code:'DEC', name:'Digital Electronics & Circuits', icon:'💾', desc:'Combinational & Sequential Logic, State Machines' },
+          { id:'ece2_3', code:'MP', name:'Microprocessors & Microcontrollers', icon:'🔬', desc:'8051, ARM, Arduino, RTOS basics' },
+          { id:'ece2_4', code:'EMT', name:'Electromagnetic Theory', icon:'🧲', desc:"Maxwell's Equations, Wave Propagation, Antennas" },
+          { id:'ece2_5', code:'CT', name:'Communication Theory', icon:'📡', desc:'AM/FM/PM, Digital Modulation, BER, Noise Analysis' },
+          { id:'ece2_6', code:'CN', name:'Computer Networks', icon:'🌐', desc:'OSI Model, TCP/IP, Routing, Wireless Protocols' },
+          { id:'ece2_7', code:'DBMS', name:'Database Management Systems', icon:'🗃️', desc:'SQL, ER Diagrams, Normalization, Transactions' },
+          { id:'ece2_8', code:'EVS', name:'Environmental Science', icon:'🌿', desc:'Ecology, E-waste, Green Electronics, Sustainability' }
+        ],
+        3: [
+          { id:'ece3_1', code:'VLSI', name:'VLSI Design', icon:'🔲', desc:'CMOS, Layout, Verilog, FPGA, System on Chip' },
+          { id:'ece3_2', code:'DSP', name:'Digital Signal Processing', icon:'🔊', desc:'FIR/IIR Filters, FFT, Spectral Analysis, Real-time DSP' },
+          { id:'ece3_3', code:'ES', name:'Embedded Systems', icon:'⚙️', desc:'ARM Cortex, RTOS, Device Drivers, Peripheral Interfacing' },
+          { id:'ece3_4', code:'IOT', name:'Internet of Things', icon:'📡', desc:'IoT Protocols, MQTT, AWS IoT, Edge Intelligence' },
+          { id:'ece3_5', code:'WC', name:'Wireless Communications', icon:'📶', desc:'4G/5G, OFDM, MIMO, Channel Coding' },
+          { id:'ece3_6', code:'OFC', name:'Optical Fiber Communications', icon:'💎', desc:'Fiber Types, WDM, Optical Amplifiers, Networks' },
+          { id:'ece3_7', code:'AI', name:'AI for ECE Applications', icon:'🤖', desc:'ML for Signal Processing, Edge AI, TinyML' },
+          { id:'ece3_8', code:'PE', name:'Professional Ethics', icon:'⚖️', desc:'Engineering Ethics, Intellectual Property, IEEE Standards' }
+        ],
+        4: [
+          { id:'ece4_1', code:'VLSI2', name:'Advanced VLSI & Chip Design', icon:'🏭', desc:'FinFET, 3D IC, Physical Verification, Timing Closure' },
+          { id:'ece4_2', code:'RF', name:'RF & Microwave Engineering', icon:'📡', desc:'S-Parameters, Waveguides, Radar, Satellite Systems' },
+          { id:'ece4_3', code:'ROB', name:'Robotics & Control Systems', icon:'🦾', desc:'PID, State-Space, Servo Motors, Robot Kinematics' },
+          { id:'ece4_4', code:'MED', name:'Medical Electronics', icon:'🏥', desc:'ECG, EEG, Imaging Systems, Biomedical Sensors' },
+          { id:'ece4_5', code:'AV', name:'Autonomous Vehicles & ADAS', icon:'🚗', desc:'LiDAR, Camera Fusion, Path Planning, Safety Standards' },
+          { id:'ece4_6', code:'RP', name:'Research Project / Capstone', icon:'🔬', desc:'Industry-level project spanning the final year' },
+          { id:'ece4_7', code:'EL', name:'Elective: Advanced Topics', icon:'🎯', desc:'Quantum Electronics, Photonics, Space Technology' },
+          { id:'ece4_8', code:'INT', name:'Internship & Industry Training', icon:'🏢', desc:'Real-world industry exposure and mentoring' }
+        ]
+      },
+      AIDS: {
+        1: [
+          { id:'aids1_1', code:'DSA1', name:'Data Structures & Algorithms I', icon:'🌲', desc:'Arrays, Linked Lists, Stacks, Queues, Trees basics' },
+          { id:'aids1_2', code:'DSA2', name:'Data Structures & Algorithms II', icon:'🔄', desc:'Graphs, Heaps, Advanced Trees, Algorithm Design' },
+          { id:'aids1_3', code:'DM', name:'Discrete Mathematics', icon:'∑', desc:'Logic, Sets, Graph Theory, Combinatorics, Induction' },
+          { id:'aids1_4', code:'JAVA', name:'Java Programming', icon:'☕', desc:'OOP, Collections, Streams, Exception Handling' },
+          { id:'aids1_5', code:'FWD', name:'Front-End Web Development', icon:'🌐', desc:'HTML, CSS, JavaScript, React for dashboards' },
+          { id:'aids1_6', code:'DDCA', name:'Digital Design for Computer Architecture', icon:'💡', desc:'Logic Gates, Boolean Algebra, Sequential Circuits' },
+          { id:'aids1_7', code:'DBMS', name:'Database Management Systems', icon:'🗃️', desc:'SQL, NoSQL, ER Diagrams, Normalization' },
+          { id:'aids1_8', code:'MDSA', name:'Mathematics for Data Science & Analytics', icon:'📊', desc:'Statistics, Probability, Linear Algebra, Calculus' },
+          { id:'aids1_9', code:'AOOP', name:'Advanced Object Oriented Programming', icon:'🧩', desc:'Design Patterns, SOLID, Generics, Reflection' },
+          { id:'aids1_10', code:'AI', name:'Artificial Intelligence Foundations', icon:'🤖', desc:'Search, Knowledge Representation, ML basics, Ethics in AI' }
+        ],
+        2: [
+          { id:'aids2_1', code:'ML', name:'Machine Learning', icon:'🧠', desc:'Regression, Classification, SVM, Random Forests' },
+          { id:'aids2_2', code:'DS', name:'Data Science with Python', icon:'📉', desc:'Pandas, NumPy, Matplotlib, Seaborn, Scikit-Learn' },
+          { id:'aids2_3', code:'STA', name:'Statistics & Probability', icon:'🎲', desc:'Bayesian Inference, Hypothesis Testing, Distributions' },
+          { id:'aids2_4', code:'DV', name:'Data Visualization', icon:'📈', desc:'Tableau, Power BI, Plotly, Storytelling with Data' },
+          { id:'aids2_5', code:'OS', name:'Operating Systems', icon:'⚙️', desc:'Processes, Memory, File Systems, Shell Scripting' },
+          { id:'aids2_6', code:'CN', name:'Computer Networks', icon:'🌐', desc:'OSI, TCP/IP, Web Protocols, API Communication' },
+          { id:'aids2_7', code:'SE', name:'Software Engineering', icon:'🛠️', desc:'Agile, SDLC, Version Control, CI/CD' },
+          { id:'aids2_8', code:'BA', name:'Business Analytics', icon:'💼', desc:'KPIs, Dashboards, Market Analysis, Decision Science' }
+        ],
+        3: [
+          { id:'aids3_1', code:'DL', name:'Deep Learning', icon:'🔥', desc:'CNN, RNN, LSTM, Transformers, Transfer Learning' },
+          { id:'aids3_2', code:'BD', name:'Big Data Technologies', icon:'📦', desc:'Hadoop, Spark, Kafka, HDFS, Hive' },
+          { id:'aids3_3', code:'NLP', name:'Natural Language Processing', icon:'📝', desc:'Tokenization, Word2Vec, BERT, GPT, Chatbots' },
+          { id:'aids3_4', code:'CV', name:'Computer Vision', icon:'👁️', desc:'Image Classification, Object Detection, Segmentation' },
+          { id:'aids3_5', code:'RL', name:'Reinforcement Learning', icon:'🎮', desc:'Q-Learning, Policy Gradient, OpenAI Gym, Game AI' },
+          { id:'aids3_6', code:'CC', name:'Cloud & MLOps', icon:'☁️', desc:'AWS SageMaker, Azure ML, Docker, Kubernetes, MLflow' },
+          { id:'aids3_7', code:'XAI', name:'Explainable AI & Ethics', icon:'⚖️', desc:'SHAP, LIME, Fairness, AI Regulation, Bias Mitigation' },
+          { id:'aids3_8', code:'TS', name:'Time Series Analysis', icon:'⏰', desc:'ARIMA, LSTM for Time Series, Forecasting, Anomaly Detection' }
+        ],
+        4: [
+          { id:'aids4_1', code:'GAI', name:'Generative AI & LLMs', icon:'✨', desc:'GPT, Diffusion Models, LoRA, Prompt Engineering, RAG' },
+          { id:'aids4_2', code:'RA', name:'Recommender Systems', icon:'🎯', desc:'Collaborative Filtering, Content-Based, Hybrid Systems' },
+          { id:'aids4_3', code:'FE', name:'Feature Engineering & AutoML', icon:'⚗️', desc:'Feature Selection, AutoML, Hyperparameter Tuning' },
+          { id:'aids4_4', code:'GNN', name:'Graph Neural Networks', icon:'🕸️', desc:'GCN, GraphSAGE, Knowledge Graphs, Social Network Analysis' },
+          { id:'aids4_5', code:'DE', name:'Data Engineering', icon:'🔧', desc:'Data Pipelines, dbt, Airflow, Lakehouse Architecture' },
+          { id:'aids4_6', code:'IOT_AI', name:'AI for IoT & Edge', icon:'📡', desc:'TinyML, Edge Inference, Federated Learning' },
+          { id:'aids4_7', code:'RP', name:'Research Project / Capstone', icon:'🔬', desc:'Industry-level AI/DS project spanning the final year' },
+          { id:'aids4_8', code:'INT', name:'Internship & Industry Training', icon:'🏢', desc:'Real-world data science and AI industry exposure' }
+        ]
+      }
+    };
+
+    function getSubjects() {
+      try {
+        const s = localStorage.getItem('dsl_subjects');
+        if (s) return JSON.parse(s);
+      } catch(e) {}
+      return JSON.parse(JSON.stringify(DEFAULT_SUBJECTS));
+    }
+  </script>
+  <script>
+    // ── AUTH GUARD ──
+    const CU = getCurrentUser();
+    if (!CU || CU.role !== 'student') { window.location.href = 'login-student.html'; }
+
+    // ── GOAL OVERLAY ──
+    let selectedGoal = localStorage.getItem('dsl_goal_' + CU.id) || null;
+
+    function showGoalOverlay() {
+      document.getElementById('goal-overlay').classList.remove('hidden');
+    }
+    function hideGoalOverlay() {
+      document.getElementById('goal-overlay').classList.add('hidden');
+    }
+
+    function selectGoal(goal) {
+      selectedGoal = goal;
+      localStorage.setItem('dsl_goal_' + CU.id, goal);
+      hideGoalOverlay();
+      if (goal === 'semester') {
+        navigate('semester', document.querySelector('[data-sec=semester]'));
+      } else if (goal === 'placement') {
+        navigate('explore', document.querySelector('[data-sec=explore]'));
+        // Pre-filter to career/programming books
+        activeFilter = 'Programming';
+        renderExplore();
+        showToast('Showing Placement Prep resources 🎯', 'info');
+      } else if (goal === 'personality') {
+        navigate('explore', document.querySelector('[data-sec=explore]'));
+        activeFilter = 'Personality';
+        renderExplore();
+        showToast('Showing Personality Development books 🌟', 'info');
+      } else if (goal === 'novels') {
+        navigate('explore', document.querySelector('[data-sec=explore]'));
+        activeFilter = 'Novels';
+        renderExplore();
+        showToast('Showing Novel Reading collection 📖', 'info');
+      }
+    }
+
+    // Show overlay on first load or if no goal saved
+    if (!selectedGoal) {
+      showGoalOverlay();
+    } else {
+      hideGoalOverlay();
+    }
+
+    // ── SEMESTER PREP LOGIC ──
+    let selBranch = null, selYear = null;
+
+    function selectBranch(branch, el) {
+      selBranch = branch;
+      selYear = null;
+      document.querySelectorAll('#branch-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('year-row').classList.remove('hidden');
+      document.getElementById('subjects-container').classList.add('hidden');
+      // reset year buttons
+      document.querySelectorAll('#year-row .tab-btn').forEach(b => b.classList.remove('active'));
+    }
+
+    function selectYear(year, el) {
+      selYear = year;
+      document.querySelectorAll('#year-row .tab-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderSubjects();
+    }
+
+    function backToYearSelect() {
+      selYear = null;
+      document.getElementById('subjects-container').classList.add('hidden');
+      document.querySelectorAll('#year-row .tab-btn').forEach(b => b.classList.remove('active'));
+    }
+
+    function renderSubjects() {
+      if (!selBranch || !selYear) return;
+      const subjects = getSubjects();
+      const list = (subjects[selBranch] && subjects[selBranch][selYear]) || [];
+      document.getElementById('sem-breadcrumb').textContent = selBranch + ' · Year ' + selYear + ' · ' + list.length + ' subjects';
+      document.getElementById('subjects-grid').innerHTML = list.length
+        ? list.map(s => {
+            const bookCount = getSubjectBookIds(selBranch, selYear, s.id).length;
+            return `<div class="subject-card">
+              <div onclick="searchBookForSubject('${s.id}','${s.name}')" style="cursor:pointer">
+                <span class="scard-icon">${s.icon}</span>
+                <span class="scard-code">${s.code}</span>
+                <div class="scard-name">${s.name}</div>
+                <div class="scard-desc">${s.desc}</div>
+                <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--cyan)">
+                  📚 ${bookCount > 0 ? bookCount + ' book' + (bookCount !== 1 ? 's' : '') + ' assigned' : 'Browse books'} →
+                </div>
+              </div>
+              <button onclick="event.stopPropagation();openStudentSubjectBorrow('${s.id}','${s.name}')"
+                style="margin-top:0.65rem;width:100%;padding:0.4rem;border-radius:7px;font-size:0.75rem;font-weight:600;
+                border:1px solid rgba(0,212,255,0.35);color:var(--cyan);background:rgba(0,212,255,0.07);cursor:pointer;transition:all 0.2s">
+                ➕ Add Book to This Subject
+              </button>
+            </div>`;
+          }).join('')
+        : '<div class="empty-state" style="grid-column:1/-1"><span class="empty-icon">📭</span><div class="empty-text">No subjects found for this branch/year yet.</div></div>';
+      document.getElementById('subjects-container').classList.remove('hidden');
+      // Reset drill panel
+      document.getElementById('subj-books-panel').style.display = 'none';
+      document.getElementById('subjects-grid').style.display = '';
+    }
+    function openStudentSubjectBorrow(subjectId, subjectName) {
+      searchBookForSubject(subjectId, subjectName);
+    }
+
+    function searchBookForSubject(subjectId, subjectName) {
+      // Show assigned books for this subject in a drill-down panel
+      const assignedIds = getSubjectBookIds(selBranch, selYear, subjectId);
+      const allBooks    = getBooks();
+      const state       = getStudentState(CU.id);
+      const container   = document.getElementById('subjects-container');
+
+      if (!assignedIds.length) {
+        // Fallback: search explore by subject name keywords
+        navigate('explore', document.querySelector('[data-sec=explore]'));
+        const keyword = subjectName.split(' ').slice(0,2).join(' ');
+        document.getElementById('explore-search').value = keyword;
+        activeFilter = 'all';
+        renderExplore();
+        showToast('Showing books related to: ' + subjectName, 'info');
+        return;
+      }
+
+      const assigned = assignedIds.map(id => allBooks.find(b => b.id === id)).filter(Boolean);
+      document.getElementById('subj-books-panel').innerHTML =
+        '<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem">'
+        + '<button class="btn btn-secondary btn-sm" onclick="closeSubjectBooks()">← Back to Subjects</button>'
+        + '<span style="font-size:0.875rem;color:var(--text2)">📚 Books for <strong>' + subjectName + '</strong></span>'
+        + '</div>'
+        + '<div class="books-grid">'
+        + assigned.map(b => bookCardHTML(b, state)).join('')
+        + '</div>';
+      document.getElementById('subjects-grid').style.display = 'none';
+      document.getElementById('subj-books-panel').style.display = '';
+    }
+    function closeSubjectBooks() {
+      document.getElementById('subjects-grid').style.display = '';
+      document.getElementById('subj-books-panel').style.display = 'none';
+    }
+
+    /* CO4 Exception Handling: catch unhandled Promise rejections */
+    window.addEventListener('unhandledrejection', function(e) {
+      console.error('[DSL Promise Rejection]', e.reason);
+      showToast('Async error: ' + ((e.reason && e.reason.message) || String(e.reason)), 'err');
+      e.preventDefault();
+    });
+    // ── INIT ──
+    document.getElementById('sb-avatar').textContent = (CU.name || 'S')[0].toUpperCase();
+    document.getElementById('sb-name').textContent = CU.name || 'Student';
+    document.getElementById('dash-title').textContent = getGreeting() + ', ' + (CU.name || 'Student') + '! 👋';
+
+    // ── NAVIGATION ──
+    function navigate(sec, el) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('sec-' + sec).classList.add('active');
+      if (el) el.classList.add('active');
+      const renders = { dashboard: renderDashboard, explore: renderExplore, issued: renderIssued, favorites: renderFavorites, history: renderHistory, profile: renderProfile, semester: ()=>{} };
+      if (renders[sec]) renders[sec]();
+    }
+
+    // ── SIDEBAR ──
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sb-overlay').classList.toggle('open');
+    }
+
+    // ── LOGOUT ──
+    function logout() { clearCurrentUser(); window.location.href = 'index.html'; }
+
+    // ── DASHBOARD ──
+    function renderDashboard() {
+      const books = getBooks();
+      const state = getStudentState(CU.id);
+      const users = getUsers();
+      const user = users.find(u => u.id === CU.id) || CU;
+
+      // Fine alert
+      if (user.fine > 0) {
+        document.getElementById('fine-alert').classList.remove('hidden');
+        document.getElementById('fine-amount').textContent = '₹' + user.fine;
+      } else {
+        document.getElementById('fine-alert').classList.add('hidden');
+      }
+
+      // Stats
+      document.getElementById('dash-stats').innerHTML = [
+        { icon: '📚', val: books.length, lbl: 'Total Books' },
+        { icon: '📖', val: state.history.length, lbl: 'Books Read' },
+        { icon: '❤️', val: state.favs.length, lbl: 'Favorites' },
+        { icon: '💰', val: '₹' + (user.fine || 0), lbl: 'Fine Due' }
+      ].map(s => `<div class="stat-card"><span class="stat-icon">${s.icon}</span><div class="stat-val">${s.val}</div><div class="stat-lbl">${s.lbl}</div></div>`).join('');
+
+      // Fav badge
+      const fb = document.getElementById('fav-count');
+      fb.textContent = state.favs.length;
+      fb.style.display = state.favs.length > 0 ? '' : 'none';
+
+      // Recommended (top 6 by popularity)
+      const top = [...books].sort((a,b) => b.popularity - a.popularity).slice(0,6);
+      document.getElementById('dash-rec').innerHTML = top.map(b => bookCardHTML(b, state)).join('');
+
+      // Recent
+      const recent = state.history.slice(0, 5);
+      document.getElementById('dash-recent').innerHTML = recent.length ? recent.map(h => {
+        const b = books.find(x => x.id === h.id);
+        return b ? `<div class="hist-item"><span class="hist-cover">${b.cover}</span><div class="hist-info"><div class="hist-title">${b.title}</div><div class="hist-meta">${b.author}</div></div><div class="hist-time">${formatTime(h.time)}</div></div>` : '';
+      }).join('') : '<div class="empty-state"><span class="empty-icon">📭</span><div class="empty-text">No reading history yet</div></div>';
+
+      // Quick stats
+      document.getElementById('dash-qstats').innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:0.5rem">
+          ${[['📚','Total Books',books.length],['👓','Books Viewed',state.history.length],['❤️','Saved',state.favs.length],['💰','Fine',`₹${user.fine||0}`]].map(([icon,lbl,val]) => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem;background:var(--surface2);border-radius:8px">
+            <span style="font-size:0.85rem;color:var(--text2)">${icon} ${lbl}</span>
+            <span style="font-family:var(--font-mono);font-size:0.85rem;font-weight:700;color:var(--text)">${val}</span>
+          </div>`).join('')}
+        </div>`;
+    }
+
+    // ── EXPLORE ──
+    let activeFilter = 'all';
+    function renderExplore() {
+      const books = getBooks();
+      const q = document.getElementById('explore-search').value.toLowerCase();
+      const sort = document.getElementById('explore-sort').value;
+      const state = getStudentState(CU.id);
+
+      // Category chips
+      const cats = ['all', 'Programming', 'Academic', 'Personality', 'Novels', 'Career'];
+      const catIcons = { all: '📋', Programming: '💻', Academic: '📐', Personality: '🌟', Novels: '📚', Career: '🎯' };
+      document.getElementById('cat-filters').innerHTML = cats.map(c => `<button class="chip ${activeFilter===c?'active':''}" onclick="setFilter('${c}')">${catIcons[c]} ${c === 'all' ? 'All Books' : c}</button>`).join('');
+
+      let filtered = books.filter(b => {
+        const matchCat = activeFilter === 'all' || b.category === activeFilter;
+        const matchQ = !q || b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.category.toLowerCase().includes(q) || (b.concepts || []).some(c => c.toLowerCase().includes(q));
+        return matchCat && matchQ;
+      });
+      if (sort === 'rating')      filtered.sort((a,b) => b.rating - a.rating);
+      else if (sort === 'title')  filtered.sort((a,b) => a.title.localeCompare(b.title));
+      else                        filtered.sort((a,b) => b.popularity - a.popularity);
+
+      document.getElementById('explore-count').textContent = `Showing ${filtered.length} book${filtered.length !== 1 ? 's' : ''}`;
+      document.getElementById('explore-grid').innerHTML = filtered.length
+        ? filtered.map(b => bookCardHTML(b, state)).join('')
+        : '<div class="empty-state" style="grid-column:1/-1"><span class="empty-icon">🔍</span><div class="empty-text">No books found</div></div>';
+    }
+    function setFilter(cat) { activeFilter = cat; renderExplore(); }
+
+    // ── ISSUED BOOKS ──
+    function renderIssued() {
+      const state = getStudentState(CU.id);
+      const books = getBooks();
+      const issued = state.issued || [];
+      if (!issued.length) {
+        document.getElementById('issued-list').innerHTML = '<div class="empty-state"><span class="empty-icon">📭</span><div class="empty-text">No books currently borrowed. Go to Explore Books to borrow!</div></div>';
+        return;
+      }
+      /* CO4 DOM Manipulation: update <o> total using createElement approach */
+      const fineTotal = issued.reduce((s,i) => s + (i.borrowFee||0), 0);
+      const outEl = document.getElementById('issued-fine-total');
+      if (outEl) outEl.textContent = '₹' + fineTotal;
+
+      document.getElementById('issued-list').innerHTML = issued.map(item => {
+        const b = books.find(x => x.id === item.bookId);
+        if (!b) return '';
+        const due = new Date(item.dueDate);
+        const overdue = due < new Date();
+        const daysLeft = Math.ceil((due - new Date()) / (1000*60*60*24));
+        return `<div class="issued-row" style="display:flex;align-items:center;gap:1rem;padding:1rem 1.25rem;border-bottom:1px solid var(--border);flex-wrap:wrap">
+          <span style="font-size:2.2rem">${b.cover}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:0.9rem;font-weight:700;color:var(--text)">${b.title}</div>
+            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px">by ${b.author} · ⭐ ${b.rating}</div>
+            <div style="font-size:0.72rem;color:var(--text3);margin-top:3px;font-family:var(--font-mono)">
+              Issued: <time datetime="${item.issueDate}">${item.issueDate}</time> · Due: <time datetime="${item.dueDate}"><span style="color:${overdue?'var(--red)':'var(--text3)'}">${item.dueDate}</span></time>
+              ${!overdue && daysLeft >= 0 ? ' · <span style="color:var(--amber)">' + daysLeft + ' day' + (daysLeft!==1?'s':'')+' left</span>' : ''}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.4rem">
+            <span class="badge ${overdue ? 'badge-red' : 'badge-green'}">${overdue ? 'OVERDUE' : 'ON TIME'}</span>
+            <button data-bookid="${item.bookId}" onclick="returnStudentBook(this.dataset.bookid)"
+              style="font-size:0.75rem;padding:0.35rem 0.75rem;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-weight:600">
+              ↩ Return
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    function returnStudentBook(bookId) {
+      const state = getStudentState(CU.id);
+      const item  = (state.issued || []).find(i => i.bookId === bookId);
+      state.issued = (state.issued || []).filter(i => i.bookId !== bookId);
+      saveStudentState(CU.id, state);
+
+      // Restore available copies
+      const books = getBooks();
+      const bidx  = books.findIndex(b => b.id === bookId);
+      if (bidx >= 0) { books[bidx].availableCopies = (books[bidx].availableCopies || 0) + 1; saveBooks(books); }
+
+      // Remove borrow fee from fine (fee is paid back on return)
+      const users = getUsers();
+      const idx   = users.findIndex(u => u.id === CU.id);
+      if (idx >= 0) {
+        if (users[idx].booksIssued > 0) users[idx].booksIssued--;
+        const fee = (item && item.borrowFee) || 0;
+        users[idx].fine = Math.max(0, (users[idx].fine || 0) - fee);
+        saveUsers(users);
+      }
+      showToast('Book returned ✅', 'ok');
+      document.dispatchEvent(new CustomEvent('bookReturned', { detail: { bookId } }));
+      renderIssued();
+    }
+
+    // ── FAVORITES ──
+    function renderFavorites() {
+      const state = getStudentState(CU.id);
+      const books = getBooks();
+      const favBooks = books.filter(b => state.favs.includes(b.id));
+      document.getElementById('fav-grid').innerHTML = favBooks.length
+        ? favBooks.map(b => bookCardHTML(b, state)).join('')
+        : '<div class="empty-state" style="grid-column:1/-1"><span class="empty-icon">💔</span><div class="empty-text">No favorites yet</div><div class="empty-sub">Explore books and save your favorites!</div></div>';
+    }
+
+    // ── HISTORY ──
+    function renderHistory() {
+      const state = getStudentState(CU.id);
+      const books = getBooks();
+      if (!state.history.length) {
+        document.getElementById('hist-list').innerHTML = '<div class="empty-state"><span class="empty-icon">📭</span><div class="empty-text">No reading history</div></div>';
+        return;
+      }
+      document.getElementById('hist-list').innerHTML = state.history.map(h => {
+        const b = books.find(x => x.id === h.id);
+        return b ? `<div class="hist-item"><span class="hist-cover">${b.cover}</span><div class="hist-info"><div class="hist-title">${b.title}</div><div class="hist-meta">${b.category} · ${b.author}</div></div><div class="hist-time">${formatTime(h.time)}</div></div>` : '';
+      }).join('');
+    }
+
+    // ── PROFILE ──
+    function renderProfile() {
+      const users = getUsers();
+      const user = users.find(u => u.id === CU.id) || CU;
+      const state = getStudentState(CU.id);
+
+      document.getElementById('prof-avatar').textContent = (user.name || 'S')[0].toUpperCase();
+      document.getElementById('prof-name').textContent = user.name || 'Student';
+
+      document.getElementById('prof-stats').innerHTML = [
+        ['Student ID', user.id],
+        ['Email', user.email || 'N/A'],
+        ['Joined', user.joinDate || 'N/A'],
+        ['Books Read', state.history.length],
+        ['Favorites', state.favs.length],
+        ['Status', user.status || 'Active']
+      ].map(([l,v]) => `<li><span class="ps-label">${l}</span><span class="ps-val">${v}</span></li>`).join('');
+
+      // Fine details
+      const fine = user.fine || 0;
+      document.getElementById('fine-detail-wrap').innerHTML = `
+        <div style="text-align:center;padding:1.5rem 0">
+          <div style="font-size:3rem;font-weight:700;font-family:var(--font-mono);color:${fine>0?'var(--red)':'var(--green)'}">₹${fine}</div>
+          <div style="font-size:0.85rem;color:var(--text3);margin-top:0.25rem">${fine > 0 ? 'Outstanding Fine' : 'No fine due'}</div>
+        </div>
+        ${fine > 0 ? `
+          <div style="background:var(--red-dim);border:1px solid rgba(255,77,109,0.3);border-radius:10px;padding:1rem;margin-bottom:1rem;font-size:0.85rem;color:var(--red)">
+            ⚠️ Please visit the library counter to pay your fine of <strong>₹${fine}</strong>.
+          </div>` : `
+          <div style="background:var(--green-dim);border:1px solid rgba(0,255,136,0.3);border-radius:10px;padding:1rem;margin-bottom:1rem;font-size:0.85rem;color:var(--green)">
+            ✅ All clear! No outstanding fines.
+          </div>`}
+        <div style="font-size:0.78rem;color:var(--text3)">Fine rate: ₹2 per day after due date</div>
+      `;
+    }
+
+    // ── BOOK CARD HTML ──
+    /* CO5 Semantic: book card uses <article> for self-contained content */
+    function bookCardHTML(book, state) {
+      const isFav = state.favs.includes(book.id);
+      const alreadyBorrowed = (state.issued || []).some(i => i.bookId === book.id);
+      const price = book.price || 0;
+      const avail = book.availableCopies !== undefined ? book.availableCopies : (book.copies || 5);
+      return `<article class="book-card" data-bookid="${book.id}" data-category="${book.category}" aria-label="${book.title}">
+        <div class="book-card-clickable" style="cursor:pointer">
+          <figure style="margin:0 0 0.25rem">
+            <span class="book-cover" role="img" aria-label="${book.title} cover">${book.cover}</span>
+            <figcaption class="sr-only">${book.title} by ${book.author}</figcaption>
+          </figure>
+          <span class="book-cat">${book.category}</span>
+          <div class="book-title">${book.title}</div>
+          <div class="book-author">${book.author}</div>
+          <div class="book-meta">
+            <span class="book-rating" aria-label="Rating ${book.rating}">⭐ ${book.rating}</span>
+            <span class="book-diff diff-${book.difficulty}">${book.difficulty}</span>
+            <button class="fav-btn" data-favid="${book.id}" onclick="toggleFav('${book.id}',event)">${isFav?'❤️':'🤍'}</button>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.5rem">
+            <output style="font-family:var(--font-mono);font-size:0.82rem;font-weight:700;color:var(--cyan)">₹${price}<span style="font-size:0.65rem;font-weight:400;color:var(--text3)"> fee</span></output>
+            <span style="font-size:0.68rem;color:var(--text3)">${avail} avail</span>
+          </div>
+          <details style="margin-top:0.45rem" onclick="event.stopPropagation()">
+            <summary style="font-size:0.7rem;color:var(--text3);cursor:pointer;list-style:none;user-select:none">ℹ️ About</summary>
+            <p style="font-size:0.7rem;color:var(--text2);margin-top:0.3rem;line-height:1.45">${book.description?book.description.slice(0,110)+'…':'No description.'}</p>
+          </details>
+        </div>
+        <button class="borrow-btn" data-bookid="${book.id}" data-price="${price}"
+          ${alreadyBorrowed?'disabled aria-disabled="true"':''}
+          style="margin-top:0.5rem;width:100%;padding:0.42rem;border-radius:8px;font-size:0.78rem;font-weight:600;transition:all 0.2s;
+          border:1px solid ${alreadyBorrowed?'var(--border)':'rgba(0,212,255,0.4)'};
+          color:${alreadyBorrowed?'var(--text3)':'var(--cyan)'};
+          background:${alreadyBorrowed?'none':'rgba(0,212,255,0.08)'};
+          cursor:${alreadyBorrowed?'not-allowed':'pointer'}">
+          ${alreadyBorrowed?'✓ Borrowed':'📖 Borrow · ₹'+price}
+        </button>
+      </article>`;
+    }
+
+    
+    // ── FAVORITES ──
+    function toggleFav(id, e) {
+      e.stopPropagation();
+      const state = getStudentState(CU.id);
+      const books = getBooks();
+      const book = books.find(b => b.id === id);
+      if (!book) return;
+      if (state.favs.includes(id)) {
+        state.favs = state.favs.filter(f => f !== id);
+        showToast('Removed from favorites', 'info');
+      } else {
+        state.favs.push(id);
+        showToast('Added to favorites ❤️', 'ok');
+      }
+      saveStudentState(CU.id, state);
+      const fb = document.getElementById('fav-count');
+      fb.textContent = state.favs.length;
+      fb.style.display = state.favs.length > 0 ? '' : 'none';
+      // Re-render current section
+      const active = document.querySelector('.section.active').id.replace('sec-', '');
+      const renders = { dashboard: renderDashboard, explore: renderExplore, favorites: renderFavorites };
+      if (renders[active]) renders[active]();
+    }
+
+    // ── BOOK MODAL ──
+    function openBookModal(id) {
+      const books = getBooks();
+      const book = books.find(b => b.id === id);
+      if (!book) return;
+
+      // Track view
+      const state = getStudentState(CU.id);
+      if (!state.history.find(h => h.id === id && new Date(h.time) > new Date(Date.now() - 60000))) {
+        state.history.unshift({ id: book.id, time: new Date().toISOString() });
+        if (state.history.length > 50) state.history.pop();
+        saveStudentState(CU.id, state);
+      }
+
+      const isFav = state.favs.includes(id);
+      document.getElementById('modal-body').innerHTML = `
+        <div class="modal-cover-strip">${book.cover}</div>
+        <div class="modal-inner">
+          <span class="modal-book-cat">${book.category}</span>
+          <div class="modal-book-title">${sanitize(book.title)}</div>
+          <div class="modal-book-author">by ${sanitize(book.author)} · ${book.year || 'N/A'}</div>
+          <div class="modal-stats-row">
+            <div class="modal-stat-item"><div class="mst-val">⭐ ${book.rating}</div><div class="mst-lbl">Rating</div></div>
+            <div class="modal-stat-item"><div class="mst-val">${book.pages || '—'}</div><div class="mst-lbl">Pages</div></div>
+            <div class="modal-stat-item"><div class="mst-val">${book.popularity}%</div><div class="mst-lbl">Popularity</div></div>
+            <div class="modal-stat-item"><div class="mst-val"><span class="book-diff diff-${book.difficulty}">${book.difficulty}</span></div><div class="mst-lbl">Level</div></div>
+          </div>
+          <div class="modal-section-lbl">About this Book</div>
+          <div class="modal-desc">${book.description}</div>
+          <div class="modal-section-lbl">Key Concepts</div>
+          <div class="concepts-list">${(book.concepts || []).map(c => `<span class="concept-chip">${c}</span>`).join('')}</div>
+          <div class="modal-btns">
+            <button class="modal-btn mbtn-fav ${isFav ? 'active' : ''}" id="modal-fav-btn" onclick="toggleFavFromModal('${id}')">
+              ${isFav ? '❤️ Saved' : '🤍 Save to Favorites'}
+            </button>
+            ${state.issued && state.issued.some(i => i.bookId === id)
+              ? '<button class="modal-btn" style="background:var(--green-dim);border:1px solid rgba(0,255,136,0.3);color:var(--green)" disabled>✓ Already Borrowed</button>'
+              : '<button class="modal-btn mbtn-primary" onclick="openBorrowDateModal(\''+id+'\')" data-bookid="${id}">📖 Borrow This Book</button>'
+            }
+            <button class="modal-btn" style="background:var(--surface);border:1px solid var(--border);color:var(--text2)" onclick="closeModal()">✓ Mark as Read</button>
+          </div>
+        </div>`;
+      document.getElementById('book-modal').classList.add('open');
+    }
+    function closeModal() { document.getElementById('book-modal').classList.remove('open'); }
+
+    function toggleFavFromModal(id) {
+      const state = getStudentState(CU.id);
+      const books = getBooks();
+      const book = books.find(b => b.id === id);
+      if (!book) return;
+      const isFav = state.favs.includes(id);
+      if (isFav) { state.favs = state.favs.filter(f => f !== id); showToast('Removed from favorites', 'info'); }
+      else { state.favs.push(id); showToast('Saved to favorites ❤️', 'ok'); }
+      saveStudentState(CU.id, state);
+      const btn = document.getElementById('modal-fav-btn');
+      if (btn) { btn.textContent = state.favs.includes(id) ? '❤️ Saved' : '🤍 Save to Favorites'; btn.classList.toggle('active', state.favs.includes(id)); }
+      const fb = document.getElementById('fav-count');
+      fb.textContent = state.favs.length;
+      fb.style.display = state.favs.length > 0 ? '' : 'none';
+    }
+
+    /* CO4 Exception Handling: catch unhandled Promise rejections */
+    window.addEventListener('unhandledrejection', function(e) {
+      console.error('[DSL Promise Rejection]', e.reason);
+      showToast('Async error: ' + ((e.reason && e.reason.message) || String(e.reason)), 'err');
+      e.preventDefault();
+    });
+    // ── INIT ──
+    renderDashboard();
+
+    // ── RESPONSIVE GRID ──
+    function checkGrid() {
+      const grid = document.getElementById('dash-grid');
+      if (grid) grid.style.gridTemplateColumns = window.innerWidth < 900 ? '1fr' : '1fr 320px';
+    }
+    window.addEventListener('resize', checkGrid); checkGrid();
+    /* ── STUDENT BORROW ── */
+    function openBorrowDateModal(bookId) {
+      closeModal();
+      const book = getBooks().find(b => b.id === bookId);
+      if (!book) return;
+      const today = new Date(), due = new Date(today);
+      due.setDate(due.getDate() + 14);
+      document.getElementById('sbm-book-id').value   = bookId;
+      /* CO5 Security: sanitize before DOM insertion */
+      document.getElementById('sbm-book-info').textContent = book.cover + ' ' + sanitize(book.title) + ' by ' + sanitize(book.author);
+      document.getElementById('sbm-issue-date').value = today.toISOString().slice(0,10);
+      document.getElementById('sbm-due-date').value   = due.toISOString().slice(0,10);
+      document.getElementById('student-borrow-modal').classList.add('open');
+    }
+    function closeStudentBorrowModal() {
+      document.getElementById('student-borrow-modal').classList.remove('open');
+    }
+    /* CO4 DOM Manipulation: insertAdjacentHTML adds confirmation chip without clearing parent */
+    function insertBorrowConfirmation(bookTitle) {
+      const container = document.getElementById('issued-list');
+      if (!container) return;
+      const chip = `<div class="borrow-confirm-chip" style="background:var(--green-dim);border:1px solid rgba(0,255,136,0.3);
+        color:var(--green);padding:0.5rem 1rem;border-radius:8px;font-size:0.82rem;font-weight:600;
+        margin-bottom:0.5rem;animation:fadeUp 0.3s ease">✅ "${bookTitle}" added to your issued books</div>`;
+      container.insertAdjacentHTML('afterbegin', chip);
+      setTimeout(() => { const c = container.querySelector('.borrow-confirm-chip'); if(c) c.remove(); }, 3000);
+    }
+    /* CO4 Exception Handling: try/catch + custom BorrowError/ValidationError */
+    function confirmStudentBorrow() {
+      try {
+        const bookId    = document.getElementById('sbm-book-id').value;
+        const issueDate = document.getElementById('sbm-issue-date').value;
+        const dueDate   = document.getElementById('sbm-due-date').value;
+
+        /* CO4 Exception: throw ValidationError for bad input */
+        if (!issueDate || !dueDate) throw new ValidationError('Please select both issue and due dates');
+        if (new Date(dueDate) <= new Date(issueDate)) throw new ValidationError('Due date must be after issue date');
+
+        const state = getStudentState(CU.id);
+        state.issued = state.issued || [];
+
+        /* CO4 Exception: throw BorrowError for duplicate borrow */
+        if (state.issued.some(i => i.bookId === bookId)) throw new BorrowError('You have already borrowed this book');
+
+        const books = getBooks();
+        const book  = books.find(b => b.id === bookId);
+        if (!book) throw new BorrowError('Book not found in catalog');
+
+        /* CO4 Exception: check availability */
+        const avail = book.availableCopies !== undefined ? book.availableCopies : (book.copies || 1);
+        if (avail <= 0) throw new BorrowError('No copies available right now');
+
+        const fee = book.price || 0;
+        state.issued.push({ bookId, issueDate, dueDate, borrowFee: fee });
+        saveStudentState(CU.id, state);
+
+        /* Reduce available copies — DOM update via CO4 custom event */
+        const bidx = books.findIndex(b => b.id === bookId);
+        if (bidx >= 0 && books[bidx].availableCopies > 0) {
+          books[bidx].availableCopies--;
+          saveBooks(books);
+        }
+
+        const users = getUsers();
+        const idx   = users.findIndex(u => u.id === CU.id);
+        if (idx >= 0) {
+          users[idx].booksIssued = (users[idx].booksIssued || 0) + 1;
+          users[idx].fine        = (users[idx].fine || 0) + fee;
+          saveUsers(users);
+        }
+
+        closeStudentBorrowModal();
+        showToast('Borrowed! ₹' + fee + ' borrow fee added 📖', 'ok');
+
+        /* CO4 Custom Event: dispatch 'bookBorrowed' — listeners update UI reactively */
+        document.dispatchEvent(new CustomEvent('bookBorrowed', {
+          detail: { bookId, fee, title: book.title }
+        }));
+
+        renderDashboard();
+
+      } catch(err) {
+        /* CO4 Exception: catch by type for specific messages */
+        if (err instanceof ValidationError) {
+          showToast('⚠️ ' + err.message, 'err');
+        } else if (err instanceof BorrowError) {
+          showToast('📚 ' + err.message, 'err');
+        } else {
+          showToast('Something went wrong: ' + err.message, 'err');
+          console.error('[confirmStudentBorrow]', err);
+        }
+      }
+    }
+
+    /* ══════════════════════════════════════════════════
+       CO4 — EVENT HANDLING
+    ══════════════════════════════════════════════════ */
+
+    /* CO4 Event Delegation: one listener on explore-grid handles ALL book card clicks
+       instead of attaching onclick to every individual card                          */
+    document.addEventListener('DOMContentLoaded', function() {
+      const grid = document.getElementById('explore-grid');
+      if (grid) {
+        grid.addEventListener('click', function(e) {
+          /* Borrow button click via delegation */
+          const borrowBtn = e.target.closest('.borrow-btn');
+          if (borrowBtn && !borrowBtn.disabled) {
+            e.stopPropagation();
+            openBorrowDateModal(borrowBtn.dataset.bookid);
+            return;
+          }
+          /* Book card click via delegation (open modal) */
+          const card = e.target.closest('.book-card-clickable');
+          if (card) {
+            const article = card.closest('article[data-bookid]');
+            if (article) openBookModal(article.dataset.bookid);
+          }
+        });
+      }
+
+      /* CO4 Keyboard Events: Escape closes modals, Enter submits search */
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+        }
+        if (e.key === 'Enter' && document.activeElement.id === 'explore-search') {
+          renderExplore();
+        }
+      });
+
+      /* CO4 Keyboard: search input live filter */
+      const searchEl = document.getElementById('explore-search');
+      if (searchEl) {
+        searchEl.addEventListener('input', function() { renderExplore(); });
+        searchEl.addEventListener('focus', function() {
+          this.parentElement.style.borderColor = 'var(--cyan)';
+        });
+        searchEl.addEventListener('blur', function() {
+          this.parentElement.style.borderColor = '';
+        });
+      }
+
+      /* CO4 Custom Event: 'bookBorrowed' — fired when borrow is confirmed
+         Multiple listeners react: fine counter, available count, issued list */
+      document.addEventListener('bookBorrowed', function(e) {
+        const { bookId, fee, title } = e.detail;
+        /* Update the <output> fine total in issued section */
+        const state = getStudentState(CU.id);
+        const total = (state.issued || []).reduce((s,i) => s + (i.borrowFee||0), 0);
+        const out = document.getElementById('issued-fine-total');
+        if (out) {
+          out.textContent = '₹' + total;
+          /* CO4 DOM Manipulation: animate the output element on change */
+          out.style.transition = 'color 0.3s';
+          out.style.color = 'var(--amber)';
+          setTimeout(() => { out.style.color = 'var(--cyan)'; }, 800);
+        }
+        console.log('[CO4 Custom Event] bookBorrowed fired:', { bookId, fee, title });
+      });
+
+      /* CO4 Custom Event: 'bookReturned' */
+      document.addEventListener('bookReturned', function(e) {
+        const state = getStudentState(CU.id);
+        const total = (state.issued || []).reduce((s,i) => s + (i.borrowFee||0), 0);
+        const out = document.getElementById('issued-fine-total');
+        if (out) {
+          out.textContent = '₹' + total;
+          out.style.color = 'var(--green)';
+          setTimeout(() => { out.style.color = 'var(--cyan)'; }, 800);
+        }
+      });
+    });
+
+    /* CO4 DOM Manipulation: MutationObserver watches fine badge for changes */
+    (function setupMutationObserver() {
+      const target = document.getElementById('dash-stats');
+      if (!target) return;
+      const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(m) {
+          if (m.type === 'childList') {
+            /* Highlight stats grid briefly when content updates */
+            target.style.transition = 'opacity 0.3s';
+            target.style.opacity = '0.6';
+            setTimeout(() => { target.style.opacity = '1'; }, 300);
+          }
+        });
+      });
+      observer.observe(target, { childList: true });
+    })();
+
+
+  </script>
+</body>
+</html>

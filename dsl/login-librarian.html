@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- CO5: Security Headers -->
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; font-src https://fonts.gstatic.com;">
+  <meta http-equiv="Referrer-Policy" content="no-referrer">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Librarian Login — Digital Smart Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="orb-wrap">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="login-page page-wrap">
+    <div class="login-card">
+      <a href="index.html" class="login-back">← Back to Home</a>
+
+      <div class="login-logo">
+        <span class="login-logo-icon">📚</span>
+        <div class="login-title">Librarian Login</div>
+        <div class="login-subtitle">Library management portal</div>
+      </div>
+
+      <div class="login-divider"></div>
+
+      <div class="form-group">
+        <label class="form-label">Librarian ID / Email</label>
+        <input type="text" id="lib-id" class="form-input" placeholder="e.g. LIB001 or admin@library.edu" value="admin" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="lib-pass" class="form-input" placeholder="Enter your password" value="admin">
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="librarianLogin()">
+        🔓 Access Management Portal
+      </button>
+
+      <div style="margin-top:1rem; text-align:center; font-size:0.78rem; color:var(--text3);">
+        Demo: ID = <code style="color:var(--cyan)">admin</code> · Password = <code style="color:var(--cyan)">admin</code>
+      </div>
+
+      <div class="login-divider"></div>
+      <div style="text-align:center; font-size:0.8rem; color:var(--text3);">
+        Are you a Student? <a href="login-student.html" style="color:var(--cyan);">Login here</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+  <script>
+    function librarianLogin() {
+      const id = document.getElementById('lib-id').value.trim();
+      const pass = document.getElementById('lib-pass').value.trim();
+      if (!id || !pass) { showToast('Please fill in all fields', 'err'); return; }
+
+      let users = getUsers();
+      let lib = users.find(u => u.role === 'librarian' && (u.id === id || u.email === id));
+
+      if (!lib) {
+        // Create librarian if doesn't exist (demo mode)
+        lib = {
+          id: id,
+          name: id === 'admin' ? 'Head Librarian' : id,
+          email: id.includes('@') ? id : id + '@library.edu',
+          role: 'librarian',
+          joinDate: new Date().toISOString().slice(0,10),
+          status: 'active'
+        };
+        users.push(lib);
+        saveUsers(users);
+      }
+
+      setCurrentUser(lib);
+      showToast('Welcome, ' + lib.name + '! 📚', 'ok');
+      setTimeout(() => window.location.href = 'dashboard-librarian.html', 900);
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') librarianLogin(); });
+  </script>
+</body>
+</html>

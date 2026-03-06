@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- CO5: Security Headers -->
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; font-src https://fonts.gstatic.com;">
+  <meta http-equiv="Referrer-Policy" content="no-referrer">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital Smart Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="orb-wrap"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="home-hero page-wrap">
+    <span class="hero-badge">INTELLIGENT ACADEMIC SYSTEM v2.0</span>
+    <h1 class="hero-title">Digital Smart<br><em>Library</em></h1>
+    <p class="hero-sub">Your AI-powered academic companion. Access thousands of books, track your progress, and achieve your learning goals.</p>
+    <div class="hero-cards">
+      <div class="hero-card" onclick="window.location.href='login-student.html'">
+        <div class="hero-card-glow"></div>
+        <span class="hero-card-icon">🎓</span>
+        <div class="hero-card-title">Student</div>
+        <div class="hero-card-desc">Access your personal dashboard, explore books, track reading progress, and manage your account.</div>
+        <span class="hero-card-link">Login as Student →</span>
+      </div>
+      <div class="hero-card" onclick="window.location.href='login-librarian.html'">
+        <div class="hero-card-glow"></div>
+        <span class="hero-card-icon">📚</span>
+        <div class="hero-card-title">Librarian</div>
+        <div class="hero-card-desc">Manage the catalog, monitor users, handle fines, assign books to subjects, and review lecturer suggestions.</div>
+        <span class="hero-card-link">Login as Librarian →</span>
+      </div>
+      <div class="hero-card" onclick="window.location.href='login-lecturer.html'">
+        <div class="hero-card-glow"></div>
+        <span class="hero-card-icon">🧑‍🏫</span>
+        <div class="hero-card-title">Lecturer</div>
+        <div class="hero-card-desc">Borrow books, browse student subjects, track fines, and suggest new books to the librarian.</div>
+        <span class="hero-card-link">Login as Lecturer →</span>
+      </div>
+    </div>
+    <p style="margin-top:3rem;font-size:0.78rem;color:var(--text3);font-family:var(--font-mono);">© 2025 Digital Smart Library</p>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

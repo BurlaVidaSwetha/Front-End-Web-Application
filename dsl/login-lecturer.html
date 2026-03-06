@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- CO5: Security Headers -->
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; font-src https://fonts.gstatic.com;">
+  <meta http-equiv="Referrer-Policy" content="no-referrer">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lecturer Login — Digital Smart Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="orb-wrap"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="login-page page-wrap">
+    <div class="login-card">
+      <a href="index.html" class="login-back">← Back to Home</a>
+      <div class="login-logo">
+        <span class="login-logo-icon">🧑‍🏫</span>
+        <div class="login-title">Lecturer Login</div>
+        <div class="login-subtitle">Faculty academic portal</div>
+      </div>
+      <div class="login-divider"></div>
+      <div class="form-group">
+        <label class="form-label">Lecturer ID / Email</label>
+        <input type="text" id="lect-id" class="form-input" placeholder="e.g. LEC001 or name@faculty.edu" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="lect-pass" class="form-input" placeholder="e.g. 100@klu" oninput="validateLive(this)">
+        <div style="margin-top:0.45rem;font-size:0.75rem;color:var(--text3);font-family:var(--font-mono);line-height:1.7">
+          <span id="h-nums" style="color:#ff6b6b">✗ 3+ digits</span> &nbsp;·&nbsp;
+          <span id="h-spec" style="color:#ff6b6b">✗ 1 special char</span> &nbsp;·&nbsp;
+          <span id="h-lets" style="color:#ff6b6b">✗ 3+ letters</span>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="doLogin()">🔓 Login to Faculty Portal</button>
+      <div style="margin-top:0.85rem;text-align:center;font-size:0.78rem;color:var(--text3)">
+        Example: ID = <code style="color:var(--cyan)">LEC001</code> · Password = <code style="color:var(--cyan)">100@klu</code>
+      </div>
+      <div class="login-divider"></div>
+      <div style="text-align:center;font-size:0.8rem;color:var(--text3)">
+        Student? <a href="login-student.html" style="color:var(--cyan)">Login here</a>
+        &nbsp;·&nbsp; <a href="login-librarian.html" style="color:var(--cyan)">Librarian Login</a>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+  <script>
+    function validatePass(p) {
+      return {
+        nums:    (p.match(/\d/g)||[]).length >= 3,
+        special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(p),
+        letters: (p.match(/[a-zA-Z]/g)||[]).length >= 3
+      };
+    }
+    function validateLive(inp) {
+      var r = validatePass(inp.value);
+      var ok = '#4ade80', fail = '#ff6b6b';
+      document.getElementById('h-nums').style.color  = r.nums    ? ok : fail;
+      document.getElementById('h-nums').textContent  = (r.nums    ? '✓' : '✗') + ' 3+ digits';
+      document.getElementById('h-spec').style.color  = r.special ? ok : fail;
+      document.getElementById('h-spec').textContent  = (r.special ? '✓' : '✗') + ' 1 special char';
+      document.getElementById('h-lets').style.color  = r.letters ? ok : fail;
+      document.getElementById('h-lets').textContent  = (r.letters ? '✓' : '✗') + ' 3+ letters';
+    }
+    function doLogin() {
+      var id   = document.getElementById('lect-id').value.trim();
+      var pass = document.getElementById('lect-pass').value.trim();
+      if (!id || !pass) { showToast('Please enter ID and password', 'err'); return; }
+      var r = validatePass(pass);
+      if (!r.nums)    { showToast('Password needs at least 3 digits', 'err'); return; }
+      if (!r.special) { showToast('Password needs at least 1 special character', 'err'); return; }
+      if (!r.letters) { showToast('Password needs at least 3 letters', 'err'); return; }
+      var users = getUsers();
+      var user  = users.find(function(u){ return u.role === 'lecturer' && (u.id === id || u.email === id); });
+      if (!user) {
+        user = { id:id, name:id.includes('@') ? id.split('@')[0] : id,
+                 email:id.includes('@') ? id : id+'@faculty.edu',
+                 role:'lecturer', dept:'General',
+                 joinDate:new Date().toISOString().slice(0,10),
+                 booksIssued:0, fine:0, status:'active' };
+        users.push(user); saveUsers(users);
+      }
+      setCurrentUser(user);
+      showToast('Welcome, ' + user.name + '! 🧑‍🏫', 'ok');
+      setTimeout(function(){ window.location.href = 'dashboard-lecturer.html'; }, 900);
+    }
+    document.addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+  </script>
+</body>
+</html>

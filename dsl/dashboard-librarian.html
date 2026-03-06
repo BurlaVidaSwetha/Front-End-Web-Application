@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- CO5: Security Headers -->
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; font-src https://fonts.gstatic.com;">
+  <meta http-equiv="Referrer-Policy" content="no-referrer">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Librarian Dashboard — Digital Smart Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .section { display: none; animation: fadeUp 0.35s ease; }
+    .section.active { display: block; }
+
+    /* Table actions */
+    .action-btns { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .btn-icon { padding: 0.35rem 0.6rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid; cursor: pointer; transition: all var(--transition); }
+
+    /* Search bar in tables */
+    .table-toolbar { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
+    .table-search { flex: 1; min-width: 200px; }
+
+    /* Overdue highlight */
+    .overdue-row td { background: rgba(255,77,109,0.04); }
+
+    /* Tag */
+    .cat-tag {
+      font-family: var(--font-mono); font-size: 0.62rem; text-transform: uppercase;
+      letter-spacing: 0.1em; padding: 2px 8px; border-radius: 4px;
+      background: var(--cyan-dim); color: var(--cyan);
+    }
+
+    /* Fine management */
+    .fine-paid-badge { color: var(--green); font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; }
+    .fine-due-badge  { color: var(--red); font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; }
+
+    /* Tab buttons for subjects */
+    .tab-btn {
+      padding: 0.38rem 0.9rem; border-radius: 20px; font-size: 0.82rem; font-weight: 600;
+      border: 1px solid var(--border); background: var(--surface); color: var(--text2);
+      cursor: pointer; transition: all var(--transition);
+    }
+    .tab-btn:hover { border-color: var(--border2); color: var(--text); }
+    .tab-btn.active { background: var(--cyan-dim); border-color: rgba(0,212,255,0.4); color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="orb-wrap">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <header class="sidebar-header">
+      <div class="sidebar-logo">
+        <span class="logo-icon">📚</span>
+        <div class="logo-text">Smart<span>Lib</span></div>
+      </div>
+    </header>
+    <div class="sidebar-user-card">
+      <div class="user-avatar" id="sb-avatar">L</div>
+      <div>
+        <div class="user-name" id="sb-name">Librarian</div>
+        <span class="user-role-chip" style="color:var(--amber);background:var(--amber-dim);border-color:rgba(255,179,71,0.2)">📋 LIBRARIAN</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-sec="dashboard" onclick="navigate('dashboard',this)">
+        <span class="nav-icon">🏠</span><span class="nav-text">Dashboard</span>
+      </a>
+      <a class="nav-item" data-sec="books" onclick="navigate('books',this)">
+        <span class="nav-icon">📖</span><span class="nav-text">Manage Books</span>
+      </a>
+      <a class="nav-item" data-sec="users" onclick="navigate('users',this)">
+        <span class="nav-icon">👥</span><span class="nav-text">Manage Users</span>
+      </a>
+      <a class="nav-item" data-sec="fines" onclick="navigate('fines',this)">
+        <span class="nav-icon">💰</span><span class="nav-text">Fine Management</span>
+        <span class="badge badge-red" id="fine-badge" style="display:none">0</span>
+      </a>
+      <a class="nav-item" data-sec="issued" onclick="navigate('issued',this)">
+        <span class="nav-icon">📋</span><span class="nav-text">Issued Books</span>
+      </a>
+      <a class="nav-item" data-sec="subjects" onclick="navigate('subjects',this)">
+        <span class="nav-icon">📘</span><span class="nav-text">Manage Subjects</span>
+      </a>
+      <a class="nav-item" data-sec="suggestions" onclick="navigate('suggestions',this)">
+        <span class="nav-icon">💡</span><span class="nav-text">Suggestions</span>
+        <span class="badge badge-red" id="sugg-nav-badge" style="display:none">0</span>
+      </a>
+      <a class="nav-item" data-sec="security" onclick="navigate('security',this)">
+        <span class="nav-icon">🔒</span><span class="nav-text">Security Panel</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <button class="hamburger" id="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+  <div class="sidebar-overlay" id="sb-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content page-wrap" id="main">
+
+    <!-- DASHBOARD -->
+    <section id="sec-dashboard" class="section active">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">📊 Librarian Dashboard</h1>
+          <p class="page-subtitle" id="dash-date">Library Management Overview</p>
+        </div>
+      </div>
+      <div class="stats-grid" id="lib-stats"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem" id="lib-dash-grid">
+        <div class="glass-card">
+          <div class="card-head"><h2 class="card-heading">👥 Recent Users</h2><button class="btn btn-secondary btn-sm" onclick="navigate('users',document.querySelector('[data-sec=users]'))">View All →</button></div>
+          <div id="recent-users"></div>
+        </div>
+        <div class="glass-card">
+          <div class="card-head"><h2 class="card-heading">💰 Outstanding Fines</h2><button class="btn btn-secondary btn-sm" onclick="navigate('fines',document.querySelector('[data-sec=fines]'))">Manage →</button></div>
+          <div id="dash-fines"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MANAGE BOOKS -->
+    <section id="sec-books" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">📖 Manage Books</h1>
+          <p class="page-subtitle">Add, edit, or remove books from the catalog</p>
+        </div>
+        <button class="btn btn-primary" onclick="openAddBookModal()">+ Add New Book</button>
+      </div>
+      <div class="glass-card" style="padding:0;overflow:hidden">
+        <div style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--border)">
+          <div class="table-toolbar">
+            <div class="search-wrap table-search" style="margin:0">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="book-search" class="search-input" placeholder="Search books…" oninput="renderBooksTable()">
+            </div>
+            <select id="book-cat-filter" class="form-select" style="width:auto" onchange="renderBooksTable()">
+              <option value="all">All Categories</option>
+              <option>Programming</option>
+              <option>Academic</option>
+              <option>Personality</option>
+              <option>Novels</option>
+              <option>Career</option>
+            </select>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table" id="books-table">
+            <thead><tr>
+              <th>Cover</th><th>Title</th><th>Author</th><th>Category</th>
+              <th>Rating</th><th>Available</th><th>Fee (₹)</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="books-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- MANAGE USERS -->
+    <section id="sec-users" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">👥 Manage Users</h1>
+          <p class="page-subtitle">View and edit student accounts</p>
+        </div>
+        <button class="btn btn-primary" onclick="openAddUserModal()">+ Add Student</button>
+      </div>
+      <div class="glass-card" style="padding:0;overflow:hidden">
+        <div style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--border)">
+          <div class="search-wrap" style="margin:0">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="user-search" class="search-input" placeholder="Search students…" oninput="renderUsersTable()">
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr>
+              <th>ID</th><th>Name</th><th>Email</th><th>Joined</th>
+              <th>Books Issued</th><th>Fine</th><th>Status</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- FINE MANAGEMENT -->
+    <section id="sec-fines" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">💰 Fine Management</h1>
+          <p class="page-subtitle">Track and clear student fines</p>
+        <!-- CO5 Semantic: <o> displays computed total fines -->
+        <output id="lib-fine-output" aria-label="Total fines" style="font-family:var(--font-mono);font-size:0.9rem;font-weight:700;color:var(--cyan)"></output>
+        </div>
+      </div>
+      <div class="stats-grid" id="fine-stats"></div>
+      <div class="glass-card" style="padding:0;overflow:hidden">
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr>
+              <th>ID</th><th>Name</th><th>Breakdown</th><th>Total Due</th><th>Status</th><th>Action</th>
+            </tr></thead>
+            <tbody id="fines-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ISSUED BOOKS -->
+    <section id="sec-issued" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">📋 Issued Books</h1>
+          <p class="page-subtitle">All books currently borrowed by students</p>
+        </div>
+        <button class="btn btn-primary" onclick="openIssueBookModal()">+ Issue Book</button>
+      </div>
+      <div class="glass-card" style="padding:0;overflow:hidden">
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr>
+              <th>Student</th><th>Book</th><th>Issue Date</th><th>Due Date</th><th>Status</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="issued-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- MANAGE SUBJECTS -->
+    <section id="sec-subjects" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">📘 Manage Subjects</h1>
+          <p class="page-subtitle">Edit semester subjects per branch and year for students</p>
+        </div>
+        <button class="btn btn-primary" onclick="openAddSubjectModal()">+ Add Subject</button>
+      </div>
+
+      <!-- Branch + Year selectors -->
+      <div class="glass-card" style="margin-bottom:1rem">
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center">
+          <div>
+            <label class="form-label" style="margin-bottom:0.3rem">Branch</label>
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap" id="lib-branch-tabs">
+              <button class="tab-btn active" onclick="libSelectBranch('CSE',this)">💻 CSE</button>
+              <button class="tab-btn" onclick="libSelectBranch('CSIT',this)">🖥️ CSIT</button>
+              <button class="tab-btn" onclick="libSelectBranch('ECE',this)">📡 ECE</button>
+              <button class="tab-btn" onclick="libSelectBranch('AIDS',this)">🤖 AIDS</button>
+            </div>
+          </div>
+          <div>
+            <label class="form-label" style="margin-bottom:0.3rem">Year</label>
+            <div style="display:flex;gap:0.4rem" id="lib-year-tabs">
+              <button class="tab-btn active" onclick="libSelectYear(1,this)">Year 1</button>
+              <button class="tab-btn" onclick="libSelectYear(2,this)">Year 2</button>
+              <button class="tab-btn" onclick="libSelectYear(3,this)">Year 3</button>
+              <button class="tab-btn" onclick="libSelectYear(4,this)">Year 4</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card" style="padding:0;overflow:hidden">
+        <div style="padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+          <span id="subj-breadcrumb" style="font-size:0.85rem;color:var(--text2)">CSE · Year 1</span>
+          <span id="subj-count" style="font-size:0.78rem;color:var(--text3)"></span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr>
+              <th>Icon</th><th>Code</th><th>Subject Name</th><th>Description</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="subjects-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUGGESTIONS SECTION -->
+    <section id="sec-suggestions" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">💡 Lecturer Suggestions</h1>
+          <p class="page-subtitle">Book suggestions from lecturers — approve, reject, or reply</p>
+        </div>
+      </div>
+      <div class="stats-grid" id="sugg-stats-lib"></div>
+      <div class="glass-card" style="margin-top:1rem" id="sugg-list-lib"></div>
+    </section>
+
+    <!-- CO5: SECURITY PANEL SECTION -->
+    <section id="sec-security" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">🔒 Security Panel</h1>
+          <p class="page-subtitle">Active security headers and XSS protection status</p>
+        </div>
+      </div>
+      <div class="stats-grid" style="margin-bottom:1.5rem">
+        <article class="stat-card" role="status" aria-label="Security header status" style="border:1px solid rgba(0,255,136,0.3)">
+          <!-- CO5 Semantic: <article> for self-contained security status info -->
+          <span class="stat-icon">🛡️</span><div class="stat-val" style="color:var(--green)">ACTIVE</div>
+          <details style="margin-top:0.3rem"><summary class="stat-lbl" style="cursor:pointer;list-style:none">X-Frame-Options</summary>
+            <p style="font-size:0.65rem;color:var(--text3);margin-top:0.3rem;line-height:1.5">Prevents this page from being embedded in an iframe. Protects against clickjacking attacks.</p>
+          </details>
+        </div>
+        <div class="stat-card" style="border:1px solid rgba(0,255,136,0.3)">
+          <span class="stat-icon">🔍</span><div class="stat-val" style="color:var(--green)">ACTIVE</div>
+          <details style="margin-top:0.3rem"><summary class="stat-lbl" style="cursor:pointer;list-style:none">XSS Protection</summary>
+            <p style="font-size:0.65rem;color:var(--text3);margin-top:0.3rem;line-height:1.5">Instructs browsers to block pages when a cross-site scripting attack is detected.</p>
+          </details>
+        </div>
+        <div class="stat-card" style="border:1px solid rgba(0,255,136,0.3)">
+          <span class="stat-icon">📋</span><div class="stat-val" style="color:var(--green)">ACTIVE</div>
+          <div class="stat-lbl">Content-Security-Policy</div>
+        </div>
+        <div class="stat-card" style="border:1px solid rgba(0,255,136,0.3)">
+          <span class="stat-icon">🚫</span><div class="stat-val" style="color:var(--green)">ACTIVE</div>
+          <div class="stat-lbl">Referrer-Policy</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+        <div class="glass-card">
+          <h2 class="card-heading" style="margin-bottom:1rem">🛡️ Security Headers</h2>
+          <div id="sec-headers-list"></div>
+        </div>
+        <div class="glass-card">
+          <h2 class="card-heading" style="margin-bottom:1rem">🔐 XSS Test</h2>
+          <p style="font-size:0.82rem;color:var(--text2);margin-bottom:0.75rem">
+            Type a suspicious string — the sanitizer will clean it in real-time:
+          </p>
+          <input type="text" id="xss-test-input" class="form-input" placeholder='Try: &lt;script&gt;alert("xss")&lt;/script&gt;'
+            oninput="testXSSSanitizer(this.value)">
+          <div style="margin-top:0.75rem">
+            <div style="font-size:0.75rem;font-weight:700;color:var(--text3);margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.08em">After Sanitize:</div>
+            <div id="xss-output" style="font-family:var(--font-mono);font-size:0.78rem;padding:0.6rem 0.85rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);color:var(--green);word-break:break-all;min-height:2.5rem"></div>
+          </div>
+          <div style="margin-top:0.75rem">
+            <div style="font-size:0.75rem;font-weight:700;color:var(--text3);margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.08em">Exception Log:</div>
+            <div id="xss-log" style="font-family:var(--font-mono);font-size:0.72rem;padding:0.6rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);color:var(--text3);max-height:100px;overflow-y:auto">No events logged yet.</div>
+          </div>
+        </div>
+      </div>
+      <div class="glass-card" style="margin-top:1.25rem">
+        <h2 class="card-heading" style="margin-bottom:1rem">⚡ CO4/CO5 Feature Log</h2>
+        <p style="font-size:0.82rem;color:var(--text2);margin-bottom:0.75rem">Live log of event handling, DOM manipulation, and exception handling in action:</p>
+        <div id="feature-log" style="font-family:var(--font-mono);font-size:0.72rem;padding:0.85rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);max-height:200px;overflow-y:auto;line-height:1.8">
+          Waiting for events…
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- SUBJECT MODAL (Add / Edit) -->
+  <div id="subject-modal" class="modal-overlay" onclick="if(event.target===this)closeSubjectModal()">
+    <div class="modal-box">
+      <button class="modal-close-btn" onclick="closeSubjectModal()">✕</button>
+      <div class="modal-title" id="subj-modal-title">Add Subject</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group"><label class="form-label">Subject Code *</label><input type="text" id="sj-code" class="form-input" placeholder="e.g. DSA1"></div>
+        <div class="form-group"><label class="form-label">Icon (emoji)</label><input type="text" id="sj-icon" class="form-input" placeholder="📚" maxlength="4"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Subject Name *</label><input type="text" id="sj-name" class="form-input" placeholder="Full subject name"></div>
+      <div class="form-group"><label class="form-label">Description</label><textarea id="sj-desc" class="form-textarea" placeholder="Brief description of topics covered…"></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group"><label class="form-label">Branch</label>
+          <select id="sj-branch" class="form-select">
+            <option>CSE</option><option>CSIT</option><option>ECE</option><option>AIDS</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Year</label>
+          <select id="sj-year" class="form-select">
+            <option value="1">Year 1</option><option value="2">Year 2</option>
+            <option value="3">Year 3</option><option value="4">Year 4</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeSubjectModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSubject()">💾 Save Subject</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOOK MODAL (Add / Edit) -->
+  <div id="book-modal" class="modal-overlay" onclick="if(event.target===this)closeBookModal()">
+    <div class="modal-box">
+      <button class="modal-close-btn" onclick="closeBookModal()">✕</button>
+      <div class="modal-title" id="book-modal-title">Add New Book</div>
+      <input type="hidden" id="edit-book-id">
+      <div class="form-group"><label class="form-label">Title *</label><input type="text" id="b-title" class="form-input" placeholder="Book title"></div>
+      <div class="form-group"><label class="form-label">Author *</label><input type="text" id="b-author" class="form-input" placeholder="Author name"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group"><label class="form-label">Category</label>
+          <select id="b-cat" class="form-select">
+            <option>Programming</option><option>Academic</option>
+            <option>Personality</option><option>Novels</option><option>Career</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Difficulty</label>
+          <select id="b-diff" class="form-select">
+            <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+        <div class="form-group"><label class="form-label">Rating (0-5)</label><input type="number" id="b-rating" class="form-input" placeholder="4.5" min="0" max="5" step="0.1"></div>
+        <div class="form-group"><label class="form-label">Pages</label><input type="number" id="b-pages" class="form-input" placeholder="300" min="1"></div>
+        <div class="form-group"><label class="form-label">Copies</label><input type="number" id="b-copies" class="form-input" placeholder="5" min="1"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group"><label class="form-label">💰 Borrow Fee (₹)</label><input type="number" id="b-price" class="form-input" placeholder="e.g. 49" min="0" step="1" value="39"></div>
+        <div class="form-group"><label class="form-label">📦 Available Copies</label><input type="number" id="b-avail" class="form-input" placeholder="e.g. 150" min="0"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Cover Emoji</label><input type="text" id="b-cover" class="form-input" placeholder="📚" maxlength="4"></div>
+      <div class="form-group"><label class="form-label">Description</label><textarea id="b-desc" class="form-textarea" placeholder="Book description…"></textarea></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeBookModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveBook()">💾 Save Book</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- USER MODAL (Add / Edit) -->
+  <div id="user-modal" class="modal-overlay" onclick="if(event.target===this)closeUserModal()">
+    <div class="modal-box">
+      <button class="modal-close-btn" onclick="closeUserModal()">✕</button>
+      <div class="modal-title" id="user-modal-title">Add Student</div>
+      <input type="hidden" id="edit-user-id">
+      <div class="form-group"><label class="form-label">Student ID *</label><input type="text" id="u-id" class="form-input" placeholder="e.g. STU2024001"></div>
+      <div class="form-group"><label class="form-label">Full Name *</label><input type="text" id="u-name" class="form-input" placeholder="Full name"></div>
+      <div class="form-group"><label class="form-label">Email</label><input type="email" id="u-email" class="form-input" placeholder="student@email.com"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group"><label class="form-label">Fine (₹)</label><input type="number" id="u-fine" class="form-input" placeholder="0" min="0"></div>
+        <div class="form-group"><label class="form-label">Status</label>
+          <select id="u-status" class="form-select"><option value="active">Active</option><option value="suspended">Suspended</option></select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeUserModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveUser()">💾 Save User</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ISSUE BOOK MODAL -->
+  <div id="issue-modal" class="modal-overlay" onclick="if(event.target===this)closeIssueModal()">
+    <div class="modal-box">
+      <button class="modal-close-btn" onclick="closeIssueModal()">✕</button>
+      <div class="modal-title">Issue Book to Student</div>
+      <div class="form-group"><label class="form-label">Student ID</label>
+        <select id="issue-student" class="form-select"></select>
+      </div>
+      <div class="form-group"><label class="form-label">Book</label>
+        <select id="issue-book" class="form-select"></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group"><label class="form-label">Issue Date</label><input type="date" id="issue-date" class="form-input"></div>
+        <div class="form-group"><label class="form-label">Due Date</label><input type="date" id="due-date" class="form-input"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeIssueModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="issueBook()">📖 Issue Book</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM MODAL -->
+  <div id="confirm-modal" class="modal-overlay" onclick="if(event.target===this)closeConfirm()">
+    <div class="modal-box" style="max-width:380px">
+      <div class="modal-title">⚠️ Confirm Action</div>
+      <p id="confirm-text" style="color:var(--text2);font-size:0.9rem;margin-bottom:1.5rem"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeConfirm()">Cancel</button>
+        <button class="btn btn-danger" id="confirm-ok-btn" onclick="confirmAction()">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBJECT-BOOKS MODAL -->
+  <div id="subject-books-modal" class="modal-overlay" onclick="if(event.target===this)closeSubjectBooksModal()">
+    <div class="modal-box" style="max-width:680px">
+      <button class="modal-close-btn" onclick="closeSubjectBooksModal()">✕</button>
+      <div class="modal-title" id="sbm-title">📚 Books for Subject</div>
+      <!-- Tabs -->
+      <div style="display:flex;gap:0.5rem;margin:1rem 0 0.5rem;border-bottom:1px solid var(--border);padding-bottom:0.5rem">
+        <button id="sbm-tab-assigned" onclick="switchSBMTab('assigned')" style="padding:0.35rem 0.9rem;border-radius:6px 6px 0 0;font-size:0.82rem;font-weight:600;border:1px solid rgba(155,89,255,0.45);background:rgba(155,89,255,0.12);color:#9b59ff;cursor:pointer">✅ Assigned</button>
+        <button id="sbm-tab-catalog" onclick="switchSBMTab('catalog')" style="padding:0.35rem 0.9rem;border-radius:6px 6px 0 0;font-size:0.82rem;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer">📚 Catalog</button>
+        <button id="sbm-tab-new" onclick="switchSBMTab('new')" style="padding:0.35rem 0.9rem;border-radius:6px 6px 0 0;font-size:0.82rem;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer">➕ Add New Book</button>
+      </div>
+      <!-- Assigned panel -->
+      <div id="sbm-panel-assigned">
+        <div id="sbm-assigned"></div>
+      </div>
+      <!-- Catalog panel -->
+      <div id="sbm-panel-catalog" style="display:none">
+        <input type="text" id="sbm-search" class="form-input" style="margin-bottom:0.75rem;font-size:0.82rem" placeholder="Search catalog…" oninput="renderSBM()">
+        <div id="sbm-catalog" style="max-height:320px;overflow-y:auto"></div>
+      </div>
+      <!-- Add New Book panel -->
+      <div id="sbm-panel-new" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.85rem">
+          <div class="form-group"><label class="form-label">Book Title *</label><input type="text" id="sbm-new-title" class="form-input" placeholder="e.g. Clean Code"></div>
+          <div class="form-group"><label class="form-label">Author</label><input type="text" id="sbm-new-author" class="form-input" placeholder="e.g. Robert C. Martin"></div>
+          <div class="form-group"><label class="form-label">Category</label>
+            <select id="sbm-new-cat" class="form-select"><option>Programming</option><option>Academic</option><option>Personality</option><option>Novels</option><option>Career</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Difficulty</label>
+            <select id="sbm-new-diff" class="form-select"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Cover Emoji</label><input type="text" id="sbm-new-cover" class="form-input" placeholder="📚" value="📚"></div>
+          <div class="form-group"><label class="form-label">Copies</label><input type="number" id="sbm-new-copies" class="form-input" value="3" min="1"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Description</label><textarea id="sbm-new-desc" class="form-textarea" placeholder="Brief description of the book…"></textarea></div>
+        <button class="btn btn-primary" onclick="addNewBookToSubject()">➕ Add Book to Library &amp; Subject</button>
+      </div>
+      <div class="modal-actions" style="margin-top:1rem">
+        <button class="btn btn-secondary" onclick="closeSubjectBooksModal()">✓ Done</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+  <script>
+    // ── AUTH GUARD ──
+    const CU = getCurrentUser();
+    if (!CU || CU.role !== 'librarian') { window.location.href = 'login-librarian.html'; }
+
+    document.getElementById('sb-avatar').textContent = (CU.name || 'L')[0].toUpperCase();
+    document.getElementById('sb-name').textContent = CU.name || 'Librarian';
+    document.getElementById('dash-date').textContent = 'Welcome back · ' + new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+    // ── NAV ──
+    function navigate(sec, el) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('sec-' + sec).classList.add('active');
+      if (el) el.classList.add('active');
+      const renders = { dashboard: renderDashboard, books: renderBooksTable, users: renderUsersTable, fines: renderFines, issued: renderIssued, subjects: renderSubjectsTable, suggestions: renderSuggestions, security: renderSecurity };
+      if (renders[sec]) renders[sec]();
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sb-overlay').classList.toggle('open');
+    }
+    function logout() { clearCurrentUser(); window.location.href = 'index.html'; }
+
+    // ── DASHBOARD ──
+    function renderDashboard() {
+      const books = getBooks();
+      const users = getUsers().filter(u => u.role === 'student');
+      const usersWithFine = users.filter(u => u.fine > 0);
+      const totalFines = users.reduce((sum, u) => sum + (u.fine || 0), 0);
+
+      // Fine badge
+      const fb = document.getElementById('fine-badge');
+      fb.textContent = usersWithFine.length;
+      fb.style.display = usersWithFine.length > 0 ? '' : 'none';
+
+      document.getElementById('lib-stats').innerHTML = [
+        { icon: '📚', val: books.length, lbl: 'Total Books' },
+        { icon: '👥', val: users.length, lbl: 'Students' },
+        { icon: '💰', val: '₹' + totalFines, lbl: 'Total Fines' },
+        { icon: '⚠️', val: usersWithFine.length, lbl: 'Pending Fines' }
+      ].map(s => `<div class="stat-card"><span class="stat-icon">${s.icon}</span><div class="stat-val">${s.val}</div><div class="stat-lbl">${s.lbl}</div></div>`).join('');
+
+      // Recent users
+      const recUsers = users.slice(-5).reverse();
+      document.getElementById('recent-users').innerHTML = recUsers.length
+        ? `<table class="data-table"><tbody>${recUsers.map(u => `<tr>
+            <td><strong>${u.name || u.id}</strong></td>
+            <td><span class="badge ${u.status==='active'?'badge-green':'badge-red'}">${u.status||'active'}</span></td>
+            <td class="${u.fine>0?'fine-due-badge':'fine-paid-badge'}">₹${u.fine||0}</td>
+          </tr>`).join('')}</tbody></table>`
+        : '<div class="empty-state"><span class="empty-icon">👥</span><div class="empty-text">No students yet</div></div>';
+
+      // Fines summary
+      document.getElementById('dash-fines').innerHTML = usersWithFine.length
+        ? `<table class="data-table"><tbody>${usersWithFine.slice(0,5).map(u => `<tr>
+            <td><strong>${u.name || u.id}</strong></td>
+            <td class="fine-due-badge">₹${u.fine}</td>
+            <td><button class="btn btn-success btn-sm" onclick="markPaid('${u.id}')">✓ Mark Paid</button></td>
+          </tr>`).join('')}</tbody></table>`
+        : '<div class="empty-state"><span class="empty-icon">✅</span><div class="empty-text">No outstanding fines</div></div>';
+
+      // Responsive dash grid
+      checkDashGrid();
+    }
+
+    function checkDashGrid() {
+      const g = document.getElementById('lib-dash-grid');
+      if (g) g.style.gridTemplateColumns = window.innerWidth < 900 ? '1fr' : '1fr 1fr';
+    }
+    window.addEventListener('resize', checkDashGrid);
+
+    // ── BOOKS TABLE ──
+    function renderBooksTable() {
+      const books = getBooks();
+      const q = (document.getElementById('book-search')?.value || '').toLowerCase();
+      const cat = document.getElementById('book-cat-filter')?.value || 'all';
+      let filtered = books.filter(b => {
+        const mQ = !q || b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q);
+        const mC = cat === 'all' || b.category === cat;
+        return mQ && mC;
+      });
+      /* CO4 DOM Manipulation: build table rows via createElement (not innerHTML) */
+      const tbody = document.getElementById('books-tbody');
+      tbody.innerHTML = '';
+      if (!filtered.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 8; td.style.cssText = 'text-align:center;color:var(--text3);padding:2rem';
+        td.textContent = 'No books found'; tr.appendChild(td); tbody.appendChild(tr);
+      } else {
+        filtered.forEach(b => {
+          const tr = document.createElement('tr');
+          /* CO5 Semantic: <figure> for book cover, <time> for year */
+          tr.innerHTML = `
+            <td><figure style="margin:0;font-size:1.6rem" title="${sanitize(b.title)}">
+              <span role="img" aria-label="${sanitize(b.category)} book">${b.cover}</span>
+            </figure></td>
+            <td><strong>${sanitize(b.title)}</strong><br>
+              <code style="font-size:0.68rem;color:var(--text3)">${b.id}</code>
+              ${b.year ? '<br><time datetime="'+b.year+'" style="font-size:0.65rem;color:var(--text3)">'+b.year+'</time>' : ''}
+            </td>
+            <td style="color:var(--text2)">${sanitize(b.author)}</td>
+            <td><span class="cat-tag">${b.category}</span></td>
+            <td style="color:var(--amber);font-family:var(--font-mono)">⭐ ${b.rating}</td>
+            <td style="font-family:var(--font-mono);text-align:center">${b.availableCopies !== undefined ? b.availableCopies : (b.copies||5)}</td>
+            <td style="font-family:var(--font-mono);font-weight:700;color:var(--cyan)">₹${b.price||0}</td>
+            <td>
+              <div class="action-btns">
+                <button class="btn-icon btn-secondary" data-bookid="${b.id}" onclick="openEditBookModal(this.dataset.bookid)">✏️ Edit</button>
+                <button class="btn-icon btn-danger" data-bookid="${b.id}" onclick="askDeleteBook(this.dataset.bookid)">🗑️ Delete</button>
+              </div>
+            </td>`;
+          tbody.appendChild(tr);
+        });
+      }
+    }
+
+    // ── USERS TABLE ──
+    function renderUsersTable() {
+      const users = getUsers().filter(u => u.role === 'student');
+      const q = (document.getElementById('user-search')?.value || '').toLowerCase();
+      const filtered = users.filter(u => !q || (u.name||'').toLowerCase().includes(q) || (u.id||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q));
+      document.getElementById('users-tbody').innerHTML = filtered.map(u => `
+        <tr>
+          <td><code style="color:var(--cyan);font-size:0.78rem">${u.id}</code></td>
+          <td><strong>${u.name || '—'}</strong></td>
+          <td style="color:var(--text3)">${u.email || '—'}</td>
+          <td style="color:var(--text3)">${u.joinDate || '—'}</td>
+          <td style="font-family:var(--font-mono)">${u.booksIssued || 0}</td>
+          <td class="${u.fine > 0 ? 'fine-due-badge' : 'fine-paid-badge'}">₹${u.fine || 0}</td>
+          <td><span class="badge ${u.status==='active'?'badge-green':'badge-red'}">${u.status || 'active'}</span></td>
+          <td>
+            <div class="action-btns">
+              <button class="btn-icon btn-secondary" onclick="openEditUserModal('${u.id}')">✏️ Edit</button>
+              <button class="btn-icon btn-danger" onclick="askDeleteUser('${u.id}')">🗑️</button>
+            </div>
+          </td>
+        </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:2rem">No students found</td></tr>';
+    }
+
+    // ── FINES ──
+    function renderFines() {
+      // Include both students and lecturers
+      const allUsers = getUsers().filter(u => u.role === 'student' || u.role === 'lecturer');
+      const total    = allUsers.reduce((s,u) => s + (u.fine||0), 0);
+      const pending  = allUsers.filter(u => u.fine > 0);
+      const students = allUsers.filter(u => u.role === 'student');
+      const lecturers= allUsers.filter(u => u.role === 'lecturer');
+
+      document.getElementById('fine-stats').innerHTML = [
+        { icon: '💰', val: '₹' + total,          lbl: 'Total Collected'     },
+        { icon: '⚠️', val: pending.length,         lbl: 'Pending Payments'   },
+        { icon: '🎓', val: students.filter(u=>u.fine>0).length,  lbl: 'Students w/ Fine' },
+        { icon: '🧑‍🏫', val: lecturers.filter(u=>u.fine>0).length, lbl: 'Lecturers w/ Fine'}
+      ].map(s => `<div class="stat-card"><span class="stat-icon">${s.icon}</span><div class="stat-val">${s.val}</div><div class="stat-lbl">${s.lbl}</div></div>`).join('');
+
+      document.getElementById('fines-tbody').innerHTML = allUsers.length
+        ? allUsers.map(u => {
+            // Calculate borrow fees from issued books
+            const state      = u.role === 'student' ? getStudentState(u.id) : getLecturerState(u.id);
+            const borrowFees = (state.issued || []).reduce((s,i) => s + (i.borrowFee||0), 0);
+            // Calculate overdue fine (₹2/day)
+            const today = new Date();
+            let overdueFine = 0;
+            (state.issued || []).forEach(i => {
+              const due = new Date(i.dueDate);
+              if (due < today) overdueFine += Math.ceil((today - due)/(1000*60*60*24)) * 2;
+            });
+            const totalFine = u.fine || 0;
+            const roleIcon  = u.role === 'lecturer' ? '🧑‍🏫' : '🎓';
+            return `<tr>
+              <td><code style="color:var(--cyan);font-size:0.78rem">${u.id}</code></td>
+              <td>${roleIcon} <strong>${u.name || '—'}</strong></td>
+              <td style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text3)">
+                Borrow fees: ₹${borrowFees}<br>Overdue: ₹${overdueFine}
+              </td>
+              <td class="${totalFine > 0 ? 'fine-due-badge' : 'fine-paid-badge'}">₹${totalFine}</td>
+              <td><span class="badge ${totalFine > 0 ? 'badge-red' : 'badge-green'}">${totalFine > 0 ? 'PENDING' : 'CLEAR'}</span></td>
+              <td>
+                ${totalFine > 0
+                  ? `<button class="btn btn-success btn-sm" onclick="markPaid('${u.id}')">✓ Mark Paid</button>`
+                  : `<span style="color:var(--text3);font-size:0.8rem">Clear</span>`}
+              </td>
+            </tr>`;
+          }).join('')
+        : '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:2rem">No users with fines</td></tr>';
+    }
+
+    // ── ISSUED TABLE ──
+    function renderIssued() {
+      const allUsers = getUsers();
+      const books = getBooks();
+      let rows = [];
+      allUsers.filter(u => u.role === 'student' || u.role === 'lecturer').forEach(u => {
+        const state = u.role === 'student' ? getStudentState(u.id) : getLecturerState(u.id);
+        (state.issued || []).forEach(item => {
+          const book = books.find(b => b.id === item.bookId);
+          if (book) rows.push({ user: u, book, item });
+        });
+      });
+      const today = new Date();
+      /* CO4 DOM Manipulation: update <o> with total fees */
+      const feeTotalEl = document.getElementById('issued-fee-total');
+      if (feeTotalEl) {
+        const totalFees = rows.reduce((s, r) => s + (r.item.borrowFee || 0), 0);
+        feeTotalEl.textContent = totalFees > 0 ? 'Total Fees: ₹' + totalFees : '';
+      }
+      document.getElementById('issued-tbody').innerHTML = rows.length
+        ? rows.map(({ user, book, item }) => {
+            const overdue = new Date(item.dueDate) < today;
+            return `<tr class="${overdue ? 'overdue-row' : ''}">
+              <td><strong>${user.name || user.id}</strong><br><code style="font-size:0.7rem;color:var(--text3)">${user.id}</code></td>
+              <td>${book.cover} <strong>${book.title}</strong></td>
+              <td style="font-family:var(--font-mono);color:var(--text3)"><time datetime="${item.issueDate}">${item.issueDate}</time></td>
+              <td style="font-family:var(--font-mono);color:${overdue?'var(--red)':'var(--text3)'}"><time datetime="${item.dueDate}">${item.dueDate}</time></td>
+              <td><span class="badge ${overdue ? 'badge-red' : 'badge-green'}">${overdue ? 'OVERDUE' : 'ON TIME'}</span></td>
+              <td><button class="btn btn-secondary btn-sm" onclick="returnBook('${user.id}','${item.bookId}')">↩ Return</button></td>
+            </tr>`;
+          }).join('')
+        : '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:2rem">No books currently issued</td></tr>';
+    }
+
+    // ── MARK FINE PAID (the "Paid" button for user) ──
+    function markPaid(userId) {
+      let users = getUsers();
+      const idx = users.findIndex(u => u.id === userId);
+      if (idx < 0) return;
+      users[idx].fine = 0;
+      saveUsers(users);
+      showToast('Fine cleared for ' + (users[idx].name || userId) + ' ✅', 'ok');
+      // Re-render current section
+      const active = document.querySelector('.section.active').id.replace('sec-', '');
+      const renders = { dashboard: renderDashboard, fines: renderFines, users: renderUsersTable };
+      if (renders[active]) renders[active]();
+    }
+
+    // ── RETURN BOOK ──
+    function returnBook(userId, bookId) {
+      const state = getStudentState(userId);
+      state.issued = (state.issued || []).filter(i => i.bookId !== bookId);
+      saveStudentState(userId, state);
+      // Update user's book count
+      let users = getUsers();
+      const idx = users.findIndex(u => u.id === userId);
+      if (idx >= 0 && users[idx].booksIssued > 0) users[idx].booksIssued--;
+      saveUsers(users);
+      showToast('Book returned successfully ✅', 'ok');
+      renderIssued();
+    }
+
+    // ── BOOK MODAL ──
+    let editingBookId = null;
+    function openAddBookModal() {
+      editingBookId = null;
+      document.getElementById('book-modal-title').textContent = '+ Add New Book';
+      document.getElementById('edit-book-id').value = '';
+      ['b-title','b-author','b-cover','b-desc'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('b-rating').value = '4.0';
+      document.getElementById('b-pages').value = '300';
+      document.getElementById('b-copies').value = '5';
+      document.getElementById('b-cover').value = '📚';
+      document.getElementById('book-modal').classList.add('open');
+      document.getElementById('b-price').value = '39';
+      document.getElementById('b-avail').value = '150';
+    }
+    function openEditBookModal(id) {
+      const books = getBooks();
+      const book = books.find(b => b.id === id);
+      if (!book) return;
+      editingBookId = id;
+      document.getElementById('book-modal-title').textContent = '✏️ Edit Book';
+      document.getElementById('edit-book-id').value = id;
+      document.getElementById('b-title').value = book.title;
+      document.getElementById('b-author').value = book.author;
+      document.getElementById('b-cat').value = book.category;
+      document.getElementById('b-diff').value = book.difficulty;
+      document.getElementById('b-rating').value = book.rating;
+      document.getElementById('b-pages').value = book.pages || 300;
+      document.getElementById('b-copies').value = book.copies || 5;
+      document.getElementById('b-cover').value = book.cover;
+      document.getElementById('b-desc').value = book.description || '';
+      document.getElementById('book-modal').classList.add('open');
+      document.getElementById('b-price').value = b.price || 39;
+      document.getElementById('b-avail').value = b.availableCopies !== undefined ? b.availableCopies : (b.copies || 150);
+    }
+    function closeBookModal() { document.getElementById('book-modal').classList.remove('open'); }
+
+    /* CO4 Exception Handling: saveBook uses try/catch + ValidationError */
+    function saveBook() {
+      try {
+      const title = document.getElementById('b-title').value.trim();
+      const author = document.getElementById('b-author').value.trim();
+      const price  = parseInt(document.getElementById('b-price').value) || 0;
+      const copies = parseInt(document.getElementById('b-copies').value) || 0;
+      /* CO4: throw ValidationError for invalid inputs */
+      if (!title)       throw new ValidationError('Book title is required');
+      if (!author)      throw new ValidationError('Author name is required');
+      if (price < 0)    throw new ValidationError('Borrow fee cannot be negative');
+      if (copies < 0)   throw new ValidationError('Copies cannot be negative');
+      /* CO5 Security: sanitize user input before saving */
+      const sTitle  = sanitize(title);
+      const sAuthor = sanitize(author);
+      let books = getBooks();
+      if (editingBookId) {
+        const idx = books.findIndex(b => b.id === editingBookId);
+        if (idx >= 0) {
+          books[idx] = { ...books[idx], title:sTitle, author:sAuthor,
+            category: document.getElementById('b-cat').value,
+            difficulty: document.getElementById('b-diff').value,
+            rating: parseFloat(document.getElementById('b-rating').value) || 4.0,
+            pages: parseInt(document.getElementById('b-pages').value) || 300,
+            copies: parseInt(document.getElementById('b-copies').value) || 5,
+            cover: document.getElementById('b-cover').value || '📚',
+            description: document.getElementById('b-desc').value,
+            popularity: books[idx].popularity || 80,
+            price: parseInt(document.getElementById('b-price').value) || 39,
+            availableCopies: parseInt(document.getElementById('b-avail').value) || 150
+          };
+        }
+        showToast('Book updated successfully ✅', 'ok');
+      } else {
+        const newBook = {
+          id: 'b' + Date.now(),
+          title:sTitle, author:sAuthor,
+          category: document.getElementById('b-cat').value,
+          difficulty: document.getElementById('b-diff').value,
+          rating: parseFloat(document.getElementById('b-rating').value) || 4.0,
+          pages: parseInt(document.getElementById('b-pages').value) || 300,
+          copies: parseInt(document.getElementById('b-copies').value) || 5,
+          cover: document.getElementById('b-cover').value || '📚',
+          description: document.getElementById('b-desc').value,
+          popularity: 75, concepts: [], year: new Date().getFullYear(),
+          price: parseInt(document.getElementById('b-price').value) || 39,
+          availableCopies: parseInt(document.getElementById('b-avail').value) || 150
+        };
+        books.push(newBook);
+        showToast('Book added successfully ✅', 'ok');
+      }
+      saveBooks(books);
+      closeBookModal();
+      renderBooksTable();
+      dslLog('[CO4 Event] Book saved: ' + sTitle);
+      } catch(err) {
+        if (err instanceof ValidationError) {
+          showToast('⚠️ ' + err.message, 'err');
+        } else {
+          showToast('Error saving book: ' + err.message, 'err');
+          console.error('[saveBook]', err);
+        }
+      }
+    }
+
+    // ── DELETE BOOK ──
+    let pendingDeleteBookId = null;
+    function askDeleteBook(id) {
+      pendingDeleteBookId = id;
+      const books = getBooks();
+      const book = books.find(b => b.id === id);
+      document.getElementById('confirm-text').textContent = `Are you sure you want to delete "${book?.title || 'this book'}"? This action cannot be undone.`;
+      document.getElementById('confirm-ok-btn').textContent = '🗑️ Delete Book';
+      pendingAction = () => {
+        let books = getBooks();
+        books = books.filter(b => b.id !== id);
+        saveBooks(books);
+        showToast('Book deleted', 'info');
+        renderBooksTable();
+        closeConfirm();
+      };
+      document.getElementById('confirm-modal').classList.add('open');
+    }
+
+    // ── USER MODAL ──
+    let editingUserId = null;
+    function openAddUserModal() {
+      editingUserId = null;
+      document.getElementById('user-modal-title').textContent = '+ Add Student';
+      ['u-id','u-name','u-email'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('u-fine').value = '0';
+      document.getElementById('u-status').value = 'active';
+      document.getElementById('u-id').disabled = false;
+      document.getElementById('user-modal').classList.add('open');
+    }
+    function openEditUserModal(id) {
+      const users = getUsers();
+      const user = users.find(u => u.id === id);
+      if (!user) return;
+      editingUserId = id;
+      document.getElementById('user-modal-title').textContent = '✏️ Edit Student';
+      document.getElementById('u-id').value = user.id;
+      document.getElementById('u-id').disabled = true;
+      document.getElementById('u-name').value = user.name || '';
+      document.getElementById('u-email').value = user.email || '';
+      document.getElementById('u-fine').value = user.fine || 0;
+      document.getElementById('u-status').value = user.status || 'active';
+      document.getElementById('user-modal').classList.add('open');
+    }
+    function closeUserModal() { document.getElementById('user-modal').classList.remove('open'); }
+
+    function saveUser() {
+      const name = document.getElementById('u-name').value.trim();
+      if (!name) { showToast('Name is required', 'err'); return; }
+      let users = getUsers();
+      if (editingUserId) {
+        const idx = users.findIndex(u => u.id === editingUserId);
+        if (idx >= 0) {
+          users[idx].name = name;
+          users[idx].email = document.getElementById('u-email').value.trim();
+          users[idx].fine = parseFloat(document.getElementById('u-fine').value) || 0;
+          users[idx].status = document.getElementById('u-status').value;
+        }
+        showToast('Student updated ✅', 'ok');
+      } else {
+        const newId = document.getElementById('u-id').value.trim() || ('STU' + Date.now());
+        if (users.find(u => u.id === newId)) { showToast('Student ID already exists', 'err'); return; }
+        users.push({
+          id: newId, name,
+          email: document.getElementById('u-email').value.trim(),
+          role: 'student',
+          joinDate: new Date().toISOString().slice(0,10),
+          booksIssued: 0,
+          fine: parseFloat(document.getElementById('u-fine').value) || 0,
+          status: document.getElementById('u-status').value
+        });
+        showToast('Student added ✅', 'ok');
+      }
+      saveUsers(users);
+      closeUserModal();
+      renderUsersTable();
+    }
+
+    // ── DELETE USER ──
+    let pendingAction = null;
+    function askDeleteUser(id) {
+      const users = getUsers();
+      const user = users.find(u => u.id === id);
+      document.getElementById('confirm-text').textContent = `Are you sure you want to remove student "${user?.name || id}"? This action cannot be undone.`;
+      document.getElementById('confirm-ok-btn').textContent = '🗑️ Remove Student';
+      pendingAction = () => {
+        let us = getUsers();
+        us = us.filter(u => u.id !== id);
+        saveUsers(us);
+        showToast('Student removed', 'info');
+        renderUsersTable();
+        closeConfirm();
+      };
+      document.getElementById('confirm-modal').classList.add('open');
+    }
+    function confirmAction() { if (pendingAction) pendingAction(); }
+    function closeConfirm() { document.getElementById('confirm-modal').classList.remove('open'); pendingAction = null; }
+
+    // ── ISSUE BOOK MODAL ──
+    function openIssueBookModal() {
+      const users = getUsers().filter(u => u.role === 'student');
+      const books = getBooks();
+      document.getElementById('issue-student').innerHTML = users.map(u => `<option value="${u.id}">${u.name || u.id} (${u.id})</option>`).join('');
+      document.getElementById('issue-book').innerHTML = books.map(b => `<option value="${b.id}">${b.cover} ${b.title}</option>`).join('');
+      const today = new Date();
+      const due = new Date(today); due.setDate(due.getDate() + 14);
+      document.getElementById('issue-date').value = today.toISOString().slice(0,10);
+      document.getElementById('due-date').value = due.toISOString().slice(0,10);
+      document.getElementById('issue-modal').classList.add('open');
+    }
+    function closeIssueModal() { document.getElementById('issue-modal').classList.remove('open'); }
+
+    function issueBook() {
+      const userId = document.getElementById('issue-student').value;
+      const bookId = document.getElementById('issue-book').value;
+      const issueDate = document.getElementById('issue-date').value;
+      const dueDate = document.getElementById('due-date').value;
+      if (!userId || !bookId || !issueDate || !dueDate) { showToast('All fields required', 'err'); return; }
+      const state = getStudentState(userId);
+      if ((state.issued || []).find(i => i.bookId === bookId)) { showToast('This book is already issued to this student', 'err'); return; }
+      state.issued = state.issued || [];
+      state.issued.push({ bookId, issueDate, dueDate });
+      saveStudentState(userId, state);
+      // Update user's book count
+      let users = getUsers();
+      const idx = users.findIndex(u => u.id === userId);
+      if (idx >= 0) { users[idx].booksIssued = (users[idx].booksIssued || 0) + 1; saveUsers(users); }
+      showToast('Book issued successfully 📖', 'ok');
+      closeIssueModal();
+      renderIssued();
+    }
+
+    // ── SUBJECTS ──
+    const DEFAULT_SUBJECTS = {
+      CSE: {
+        1: [
+          { id:'cse1_1', code:'DSA1', name:'Data Structures & Algorithms I', icon:'🌲', desc:'Arrays, Linked Lists, Stacks, Queues, basic Trees' },
+          { id:'cse1_2', code:'DSA2', name:'Data Structures & Algorithms II', icon:'🔄', desc:'Graphs, Heaps, Advanced Trees, Algorithm Design' },
+          { id:'cse1_3', code:'DM', name:'Discrete Mathematics', icon:'∑', desc:'Logic, Sets, Graph Theory, Combinatorics, Induction' },
+          { id:'cse1_4', code:'JAVA', name:'Java Programming', icon:'☕', desc:'OOP concepts, Collections, Streams, Exception Handling' },
+          { id:'cse1_5', code:'FWD', name:'Front-End Web Development', icon:'🌐', desc:'HTML, CSS, JavaScript, React fundamentals' },
+          { id:'cse1_6', code:'DDCA', name:'Digital Design for Computer Architecture', icon:'💡', desc:'Logic Gates, Boolean Algebra, Combinational & Sequential Circuits' },
+          { id:'cse1_7', code:'DBMS', name:'Database Management Systems', icon:'🗃️', desc:'SQL, ER Diagrams, Normalization, Transactions, ACID' },
+          { id:'cse1_8', code:'MDSA', name:'Mathematics for Data Science & Analytics', icon:'📊', desc:'Statistics, Probability, Linear Algebra for ML/DS' },
+          { id:'cse1_9', code:'AOOP', name:'Advanced Object Oriented Programming', icon:'🧩', desc:'Design Patterns, SOLID Principles, Generics, Reflection' },
+          { id:'cse1_10', code:'AI', name:'Artificial Intelligence', icon:'🤖', desc:'Search Algorithms, Knowledge Representation, ML Basics, NLP' }
+        ],
+        2: [
+          { id:'cse2_1', code:'OS', name:'Operating Systems', icon:'⚙️', desc:'Processes, Threads, Scheduling, Memory Management, File Systems' },
+          { id:'cse2_2', code:'CN', name:'Computer Networks', icon:'🌐', desc:'OSI Model, TCP/IP, DNS, HTTP, Routing Protocols' },
+          { id:'cse2_3', code:'TOC', name:'Theory of Computation', icon:'🔁', desc:'Automata, Grammars, Turing Machines, Complexity Classes' },
+          { id:'cse2_4', code:'SE', name:'Software Engineering', icon:'🛠️', desc:'SDLC, Agile, UML, Testing, Project Management' },
+          { id:'cse2_5', code:'DAA', name:'Design & Analysis of Algorithms', icon:'📐', desc:'Greedy, Divide & Conquer, Dynamic Programming, NP-Completeness' },
+          { id:'cse2_6', code:'COA', name:'Computer Organization & Architecture', icon:'🏗️', desc:'CPU Design, Pipelining, Cache Memory, I/O Systems' },
+          { id:'cse2_7', code:'MP', name:'Microprocessors & Embedded Systems', icon:'🔬', desc:'8086 Architecture, Assembly, Interfacing, Embedded C' },
+          { id:'cse2_8', code:'EVS', name:'Environmental Science', icon:'🌿', desc:'Ecology, Pollution, Sustainability, Environmental Laws' }
+        ],
+        3: [
+          { id:'cse3_1', code:'ML', name:'Machine Learning', icon:'🧠', desc:'Regression, Classification, Clustering, Feature Engineering' },
+          { id:'cse3_2', code:'DL', name:'Deep Learning', icon:'🔥', desc:'Neural Networks, CNN, RNN, Transformers, GANs' },
+          { id:'cse3_3', code:'CC', name:'Cloud Computing', icon:'☁️', desc:'AWS/Azure/GCP, Virtualization, Containers, Serverless' },
+          { id:'cse3_4', code:'IS', name:'Information Security', icon:'🔐', desc:'Cryptography, Network Security, Ethical Hacking basics' },
+          { id:'cse3_5', code:'WD', name:'Web Development (Full Stack)', icon:'💻', desc:'Node.js, React, REST APIs, MongoDB, Deployment' },
+          { id:'cse3_6', code:'DC', name:'Distributed Computing', icon:'🔗', desc:'Map-Reduce, Consensus Algorithms, Fault Tolerance' },
+          { id:'cse3_7', code:'CD', name:'Compiler Design', icon:'⚡', desc:'Lexical Analysis, Parsing, Semantic Analysis, Code Generation' },
+          { id:'cse3_8', code:'PE', name:'Professional Ethics', icon:'⚖️', desc:'Engineering Ethics, Intellectual Property, Cyber Law' }
+        ],
+        4: [
+          { id:'cse4_1', code:'BD', name:'Big Data Analytics', icon:'📦', desc:'Hadoop, Spark, HDFS, Data Pipelines, Real-time Processing' },
+          { id:'cse4_2', code:'IOT', name:'Internet of Things', icon:'📡', desc:'IoT Architecture, Sensors, Protocols, Edge Computing' },
+          { id:'cse4_3', code:'BC', name:'Blockchain Technology', icon:'⛓️', desc:'Consensus, Smart Contracts, Ethereum, DeFi basics' },
+          { id:'cse4_4', code:'CV', name:'Computer Vision', icon:'👁️', desc:'Image Processing, Object Detection, OpenCV, YOLO' },
+          { id:'cse4_5', code:'NLP', name:'Natural Language Processing', icon:'📝', desc:'Tokenization, Transformers, BERT, Sentiment Analysis' },
+          { id:'cse4_6', code:'SD', name:'Software Design & Architecture', icon:'🏛️', desc:'Microservices, Design Patterns, System Design, APIs' },
+          { id:'cse4_7', code:'RP', name:'Research Project / Capstone', icon:'🔬', desc:'Industry-level project spanning the final year' },
+          { id:'cse4_8', code:'EL', name:'Elective: Advanced Topics', icon:'🎯', desc:'AR/VR, Quantum Computing, Autonomous Systems' }
+        ]
+      },
+      CSIT: {
+        1: [
+          { id:'csit1_1', code:'DSA1', name:'Data Structures & Algorithms I', icon:'🌲', desc:'Arrays, Linked Lists, Stacks, Queues, Trees basics' },
+          { id:'csit1_2', code:'DSA2', name:'Data Structures & Algorithms II', icon:'🔄', desc:'Graphs, Heaps, Advanced Trees, Algorithm Design' },
+          { id:'csit1_3', code:'DM', name:'Discrete Mathematics', icon:'∑', desc:'Logic, Sets, Graph Theory, Combinatorics, Induction' },
+          { id:'csit1_4', code:'JAVA', name:'Java Programming', icon:'☕', desc:'OOP concepts, Collections, Streams, Exception Handling' },
+          { id:'csit1_5', code:'FWD', name:'Front-End Web Development', icon:'🌐', desc:'HTML, CSS, JavaScript, React fundamentals' },
+          { id:'csit1_6', code:'DDCA', name:'Digital Design for Computer Architecture', icon:'💡', desc:'Logic Gates, Boolean Algebra, Sequential Circuits' },
+          { id:'csit1_7', code:'DBMS', name:'Database Management Systems', icon:'🗃️', desc:'SQL, ER Diagrams, Normalization, Transactions' },
+          { id:'csit1_8', code:'MDSA', name:'Mathematics for Data Science & Analytics', icon:'📊', desc:'Statistics, Probability, Linear Algebra for ML/DS' },
+          { id:'csit1_9', code:'AOOP', name:'Advanced Object Oriented Programming', icon:'🧩', desc:'Design Patterns, SOLID Principles, Generics' },
+          { id:'csit1_10', code:'AI', name:'Artificial Intelligence', icon:'🤖', desc:'Search Algorithms, Knowledge Representation, ML Basics' }
+        ],
+        2: [
+          { id:'csit2_1', code:'OS', name:'Operating Systems', icon:'⚙️', desc:'Processes, Scheduling, Memory Management, File Systems' },
+          { id:'csit2_2', code:'CN', name:'Computer Networks', icon:'🌐', desc:'OSI Model, TCP/IP, Routing, Network Security' },
+          { id:'csit2_3', code:'SE', name:'Software Engineering', icon:'🛠️', desc:'SDLC, Agile, UML, Testing Methodologies' },
+          { id:'csit2_4', code:'DAA', name:'Design & Analysis of Algorithms', icon:'📐', desc:'Greedy, Dynamic Programming, NP-Completeness' },
+          { id:'csit2_5', code:'IT', name:'Information Theory', icon:'📡', desc:'Entropy, Coding, Data Compression, Channel Capacity' },
+          { id:'csit2_6', code:'WT', name:'Web Technologies', icon:'💻', desc:'HTML5, CSS3, JavaScript, AJAX, Web Frameworks' },
+          { id:'csit2_7', code:'PM', name:'Project Management', icon:'📋', desc:'Agile, Scrum, Risk Management, Cost Estimation' },
+          { id:'csit2_8', code:'DW', name:'Data Warehousing', icon:'🏢', desc:'ETL, OLAP, Star Schema, Data Marts' }
+        ],
+        3: [
+          { id:'csit3_1', code:'ML', name:'Machine Learning', icon:'🧠', desc:'Supervised, Unsupervised, Feature Engineering, Model Evaluation' },
+          { id:'csit3_2', code:'DS', name:'Data Science', icon:'📉', desc:'Pandas, NumPy, EDA, Visualization, Statistical Inference' },
+          { id:'csit3_3', code:'CC', name:'Cloud Computing', icon:'☁️', desc:'Cloud Services, Virtualization, Containers, DevOps' },
+          { id:'csit3_4', code:'IS', name:'Information Security', icon:'🔐', desc:'Cryptography, PKI, Firewalls, Penetration Testing' },
+          { id:'csit3_5', code:'MO', name:'Mobile App Development', icon:'📱', desc:'Android/iOS, Flutter, React Native, App Lifecycle' },
+          { id:'csit3_6', code:'BA', name:'Business Analytics', icon:'📈', desc:'Tableau, Power BI, KPIs, Predictive Analytics' },
+          { id:'csit3_7', code:'NLP', name:'Natural Language Processing', icon:'📝', desc:'Text Processing, Sentiment Analysis, BERT, ChatBots' },
+          { id:'csit3_8', code:'PE', name:'Professional Ethics & Cyber Law', icon:'⚖️', desc:'IT Act, Data Privacy, Ethics in AI, Cybercrime' }
+        ],
+        4: [
+          { id:'csit4_1', code:'BD', name:'Big Data Technologies', icon:'📦', desc:'Hadoop, Spark, Kafka, Hive, Real-time Streaming' },
+          { id:'csit4_2', code:'AI2', name:'Advanced AI & Deep Learning', icon:'🔥', desc:'CNN, LSTM, GAN, Reinforcement Learning, AutoML' },
+          { id:'csit4_3', code:'BC', name:'Blockchain & Fintech', icon:'⛓️', desc:'DLT, Smart Contracts, Cryptocurrency, DeFi' },
+          { id:'csit4_4', code:'CY', name:'Cybersecurity Management', icon:'🛡️', desc:'SIEM, SOC, Incident Response, ISO 27001' },
+          { id:'csit4_5', code:'ERP', name:'Enterprise Resource Planning', icon:'🏭', desc:'SAP, Oracle ERP, Implementation, Business Processes' },
+          { id:'csit4_6', code:'RP', name:'Research Project / Capstone', icon:'🔬', desc:'Industry-level project spanning the final year' },
+          { id:'csit4_7', code:'INT', name:'Internship & Industry Training', icon:'🏢', desc:'Real-world exposure, Industry mentoring, Report submission' },
+          { id:'csit4_8', code:'EL', name:'Elective: Emerging Technologies', icon:'🚀', desc:'Quantum Computing, AR/VR, Digital Twin, Edge AI' }
+        ]
+      },
+      ECE: {
+        1: [
+          { id:'ece1_1', code:'BEE', name:'Basic Electrical Engineering', icon:'⚡', desc:"Circuits, Ohm's Law, KVL/KCL, AC/DC Analysis" },
+          { id:'ece1_2', code:'EDT', name:'Electronic Devices & Theory', icon:'💡', desc:'Diodes, Transistors, MOSFETs, Operational Amplifiers' },
+          { id:'ece1_3', code:'DM', name:'Discrete Mathematics', icon:'∑', desc:'Logic, Sets, Graph Theory, Combinatorics' },
+          { id:'ece1_4', code:'DDCA', name:'Digital Design for Computer Architecture', icon:'🔌', desc:'Logic Gates, Flip-Flops, Counters, Multiplexers' },
+          { id:'ece1_5', code:'PIC', name:'Programming for IoT & Control', icon:'🐍', desc:'C/Python, Embedded basics, GPIO control' },
+          { id:'ece1_6', code:'SS', name:'Signals & Systems', icon:'〰️', desc:'Fourier, Laplace, Z-Transform, Convolution' },
+          { id:'ece1_7', code:'MDSA', name:'Mathematics for Data Science & Analytics', icon:'📊', desc:'Statistics, Probability, Linear Algebra' },
+          { id:'ece1_8', code:'EM', name:'Engineering Mathematics', icon:'➗', desc:'Calculus, Differential Equations, Complex Analysis' },
+          { id:'ece1_9', code:'FWD', name:'Front-End Web Development', icon:'🌐', desc:'HTML, CSS, JavaScript basics' },
+          { id:'ece1_10', code:'AI', name:'Artificial Intelligence Fundamentals', icon:'🤖', desc:'AI basics, Search Algorithms, ML introduction' }
+        ],
+        2: [
+          { id:'ece2_1', code:'AEC', name:'Analog Electronics Circuits', icon:'📻', desc:'Amplifiers, Oscillators, Feedback, Power Amplifiers' },
+          { id:'ece2_2', code:'DEC', name:'Digital Electronics & Circuits', icon:'💾', desc:'Combinational & Sequential Logic, State Machines' },
+          { id:'ece2_3', code:'MP', name:'Microprocessors & Microcontrollers', icon:'🔬', desc:'8051, ARM, Arduino, RTOS basics' },
+          { id:'ece2_4', code:'EMT', name:'Electromagnetic Theory', icon:'🧲', desc:"Maxwell's Equations, Wave Propagation, Antennas" },
+          { id:'ece2_5', code:'CT', name:'Communication Theory', icon:'📡', desc:'AM/FM/PM, Digital Modulation, BER, Noise Analysis' },
+          { id:'ece2_6', code:'CN', name:'Computer Networks', icon:'🌐', desc:'OSI Model, TCP/IP, Routing, Wireless Protocols' },
+          { id:'ece2_7', code:'DBMS', name:'Database Management Systems', icon:'🗃️', desc:'SQL, ER Diagrams, Normalization, Transactions' },
+          { id:'ece2_8', code:'EVS', name:'Environmental Science', icon:'🌿', desc:'Ecology, E-waste, Green Electronics, Sustainability' }
+        ],
+        3: [
+          { id:'ece3_1', code:'VLSI', name:'VLSI Design', icon:'🔲', desc:'CMOS, Layout, Verilog, FPGA, System on Chip' },
+          { id:'ece3_2', code:'DSP', name:'Digital Signal Processing', icon:'🔊', desc:'FIR/IIR Filters, FFT, Spectral Analysis, Real-time DSP' },
+          { id:'ece3_3', code:'ES', name:'Embedded Systems', icon:'⚙️', desc:'ARM Cortex, RTOS, Device Drivers, Peripheral Interfacing' },
+          { id:'ece3_4', code:'IOT', name:'Internet of Things', icon:'📡', desc:'IoT Protocols, MQTT, AWS IoT, Edge Intelligence' },
+          { id:'ece3_5', code:'WC', name:'Wireless Communications', icon:'📶', desc:'4G/5G, OFDM, MIMO, Channel Coding' },
+          { id:'ece3_6', code:'OFC', name:'Optical Fiber Communications', icon:'💎', desc:'Fiber Types, WDM, Optical Amplifiers, Networks' },
+          { id:'ece3_7', code:'AI', name:'AI for ECE Applications', icon:'🤖', desc:'ML for Signal Processing, Edge AI, TinyML' },
+          { id:'ece3_8', code:'PE', name:'Professional Ethics', icon:'⚖️', desc:'Engineering Ethics, Intellectual Property, IEEE Standards' }
+        ],
+        4: [
+          { id:'ece4_1', code:'VLSI2', name:'Advanced VLSI & Chip Design', icon:'🏭', desc:'FinFET, 3D IC, Physical Verification, Timing Closure' },
+          { id:'ece4_2', code:'RF', name:'RF & Microwave Engineering', icon:'📡', desc:'S-Parameters, Waveguides, Radar, Satellite Systems' },
+          { id:'ece4_3', code:'ROB', name:'Robotics & Control Systems', icon:'🦾', desc:'PID, State-Space, Servo Motors, Robot Kinematics' },
+          { id:'ece4_4', code:'MED', name:'Medical Electronics', icon:'🏥', desc:'ECG, EEG, Imaging Systems, Biomedical Sensors' },
+          { id:'ece4_5', code:'AV', name:'Autonomous Vehicles & ADAS', icon:'🚗', desc:'LiDAR, Camera Fusion, Path Planning, Safety Standards' },
+          { id:'ece4_6', code:'RP', name:'Research Project / Capstone', icon:'🔬', desc:'Industry-level project spanning the final year' },
+          { id:'ece4_7', code:'EL', name:'Elective: Advanced Topics', icon:'🎯', desc:'Quantum Electronics, Photonics, Space Technology' },
+          { id:'ece4_8', code:'INT', name:'Internship & Industry Training', icon:'🏢', desc:'Real-world industry exposure and mentoring' }
+        ]
+      },
+      AIDS: {
+        1: [
+          { id:'aids1_1', code:'DSA1', name:'Data Structures & Algorithms I', icon:'🌲', desc:'Arrays, Linked Lists, Stacks, Queues, Trees basics' },
+          { id:'aids1_2', code:'DSA2', name:'Data Structures & Algorithms II', icon:'🔄', desc:'Graphs, Heaps, Advanced Trees, Algorithm Design' },
+          { id:'aids1_3', code:'DM', name:'Discrete Mathematics', icon:'∑', desc:'Logic, Sets, Graph Theory, Combinatorics, Induction' },
+          { id:'aids1_4', code:'JAVA', name:'Java Programming', icon:'☕', desc:'OOP, Collections, Streams, Exception Handling' },
+          { id:'aids1_5', code:'FWD', name:'Front-End Web Development', icon:'🌐', desc:'HTML, CSS, JavaScript, React for dashboards' },
+          { id:'aids1_6', code:'DDCA', name:'Digital Design for Computer Architecture', icon:'💡', desc:'Logic Gates, Boolean Algebra, Sequential Circuits' },
+          { id:'aids1_7', code:'DBMS', name:'Database Management Systems', icon:'🗃️', desc:'SQL, NoSQL, ER Diagrams, Normalization' },
+          { id:'aids1_8', code:'MDSA', name:'Mathematics for Data Science & Analytics', icon:'📊', desc:'Statistics, Probability, Linear Algebra, Calculus' },
+          { id:'aids1_9', code:'AOOP', name:'Advanced Object Oriented Programming', icon:'🧩', desc:'Design Patterns, SOLID, Generics, Reflection' },
+          { id:'aids1_10', code:'AI', name:'Artificial Intelligence Foundations', icon:'🤖', desc:'Search, Knowledge Representation, ML basics, Ethics in AI' }
+        ],
+        2: [
+          { id:'aids2_1', code:'ML', name:'Machine Learning', icon:'🧠', desc:'Regression, Classification, SVM, Random Forests' },
+          { id:'aids2_2', code:'DS', name:'Data Science with Python', icon:'📉', desc:'Pandas, NumPy, Matplotlib, Seaborn, Scikit-Learn' },
+          { id:'aids2_3', code:'STA', name:'Statistics & Probability', icon:'🎲', desc:'Bayesian Inference, Hypothesis Testing, Distributions' },
+          { id:'aids2_4', code:'DV', name:'Data Visualization', icon:'📈', desc:'Tableau, Power BI, Plotly, Storytelling with Data' },
+          { id:'aids2_5', code:'OS', name:'Operating Systems', icon:'⚙️', desc:'Processes, Memory, File Systems, Shell Scripting' },
+          { id:'aids2_6', code:'CN', name:'Computer Networks', icon:'🌐', desc:'OSI, TCP/IP, Web Protocols, API Communication' },
+          { id:'aids2_7', code:'SE', name:'Software Engineering', icon:'🛠️', desc:'Agile, SDLC, Version Control, CI/CD' },
+          { id:'aids2_8', code:'BA', name:'Business Analytics', icon:'💼', desc:'KPIs, Dashboards, Market Analysis, Decision Science' }
+        ],
+        3: [
+          { id:'aids3_1', code:'DL', name:'Deep Learning', icon:'🔥', desc:'CNN, RNN, LSTM, Transformers, Transfer Learning' },
+          { id:'aids3_2', code:'BD', name:'Big Data Technologies', icon:'📦', desc:'Hadoop, Spark, Kafka, HDFS, Hive' },
+          { id:'aids3_3', code:'NLP', name:'Natural Language Processing', icon:'📝', desc:'Tokenization, Word2Vec, BERT, GPT, Chatbots' },
+          { id:'aids3_4', code:'CV', name:'Computer Vision', icon:'👁️', desc:'Image Classification, Object Detection, Segmentation' },
+          { id:'aids3_5', code:'RL', name:'Reinforcement Learning', icon:'🎮', desc:'Q-Learning, Policy Gradient, OpenAI Gym, Game AI' },
+          { id:'aids3_6', code:'CC', name:'Cloud & MLOps', icon:'☁️', desc:'AWS SageMaker, Azure ML, Docker, Kubernetes, MLflow' },
+          { id:'aids3_7', code:'XAI', name:'Explainable AI & Ethics', icon:'⚖️', desc:'SHAP, LIME, Fairness, AI Regulation, Bias Mitigation' },
+          { id:'aids3_8', code:'TS', name:'Time Series Analysis', icon:'⏰', desc:'ARIMA, LSTM for Time Series, Forecasting, Anomaly Detection' }
+        ],
+        4: [
+          { id:'aids4_1', code:'GAI', name:'Generative AI & LLMs', icon:'✨', desc:'GPT, Diffusion Models, LoRA, Prompt Engineering, RAG' },
+          { id:'aids4_2', code:'RA', name:'Recommender Systems', icon:'🎯', desc:'Collaborative Filtering, Content-Based, Hybrid Systems' },
+          { id:'aids4_3', code:'FE', name:'Feature Engineering & AutoML', icon:'⚗️', desc:'Feature Selection, AutoML, Hyperparameter Tuning' },
+          { id:'aids4_4', code:'GNN', name:'Graph Neural Networks', icon:'🕸️', desc:'GCN, GraphSAGE, Knowledge Graphs, Social Network Analysis' },
+          { id:'aids4_5', code:'DE', name:'Data Engineering', icon:'🔧', desc:'Data Pipelines, dbt, Airflow, Lakehouse Architecture' },
+          { id:'aids4_6', code:'IOT_AI', name:'AI for IoT & Edge', icon:'📡', desc:'TinyML, Edge Inference, Federated Learning' },
+          { id:'aids4_7', code:'RP', name:'Research Project / Capstone', icon:'🔬', desc:'Industry-level AI/DS project spanning the final year' },
+          { id:'aids4_8', code:'INT', name:'Internship & Industry Training', icon:'🏢', desc:'Real-world data science and AI industry exposure' }
+        ]
+      }
+    };
+
+    function getSubjects() {
+      try { const s = localStorage.getItem('dsl_subjects'); if (s) return JSON.parse(s); } catch(e) {}
+      return JSON.parse(JSON.stringify(DEFAULT_SUBJECTS));
+    }
+    function saveSubjects(s) {
+      try { localStorage.setItem('dsl_subjects', JSON.stringify(s)); } catch(e) {}
+    }
+
+    // Current selection for librarian subject editor
+    let libSelBranch = 'CSE', libSelYear = 1;
+
+    function libSelectBranch(branch, el) {
+      libSelBranch = branch;
+      document.querySelectorAll('#lib-branch-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderSubjectsTable();
+    }
+    function libSelectYear(year, el) {
+      libSelYear = year;
+      document.querySelectorAll('#lib-year-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderSubjectsTable();
+    }
+
+    function renderSubjectsTable() {
+      const subjects = getSubjects();
+      const list = (subjects[libSelBranch] && subjects[libSelBranch][libSelYear]) || [];
+      document.getElementById('subj-breadcrumb').textContent = libSelBranch + ' · Year ' + libSelYear;
+      document.getElementById('subj-count').textContent = list.length + ' subject' + (list.length !== 1 ? 's' : '');
+      document.getElementById('subjects-tbody').innerHTML = list.length
+        ? list.map((s, i) => `
+          <tr>
+            <td style="font-size:1.4rem">${s.icon || '📚'}</td>
+            <td><code style="color:var(--cyan);font-family:var(--font-mono);font-size:0.78rem">${s.code}</code></td>
+            <td><strong>${s.name}</strong></td>
+            <td style="color:var(--text3);font-size:0.8rem;max-width:280px">${s.desc || '—'}</td>
+            <td>
+              <div class="action-btns">
+                <button class="btn-icon" style="background:rgba(155,89,255,0.1);border:1px solid rgba(155,89,255,0.4);color:#9b59ff" data-sid="${s.id}" data-sname="${s.name}" data-branch="${libSelBranch}" data-year="${libSelYear}" onclick="openSubjectBooksModal(this.dataset.branch,this.dataset.year,this.dataset.sid,this.dataset.sname)">📚 Books</button>
+                <button class="btn-icon btn-secondary" onclick="openEditSubjectModal(${i})">✏️ Edit</button>
+                <button class="btn-icon btn-danger" onclick="deleteSubject(${i})">🗑️</button>
+              </div>
+            </td>
+          </tr>`).join('')
+        : '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:2rem">No subjects yet. Click "+ Add Subject" to add one.</td></tr>';
+    }
+
+    // Subject modal
+    let editingSubjectIdx = null;
+    function openAddSubjectModal() {
+      editingSubjectIdx = null;
+      document.getElementById('subj-modal-title').textContent = '+ Add Subject';
+      document.getElementById('sj-code').value = '';
+      document.getElementById('sj-name').value = '';
+      document.getElementById('sj-desc').value = '';
+      document.getElementById('sj-icon').value = '📚';
+      document.getElementById('sj-branch').value = libSelBranch;
+      document.getElementById('sj-year').value = libSelYear;
+      document.getElementById('subject-modal').classList.add('open');
+    }
+    function openEditSubjectModal(idx) {
+      const subjects = getSubjects();
+      const list = (subjects[libSelBranch] && subjects[libSelBranch][libSelYear]) || [];
+      const s = list[idx];
+      if (!s) return;
+      editingSubjectIdx = idx;
+      document.getElementById('subj-modal-title').textContent = '✏️ Edit Subject';
+      document.getElementById('sj-code').value = s.code;
+      document.getElementById('sj-name').value = s.name;
+      document.getElementById('sj-desc').value = s.desc || '';
+      document.getElementById('sj-icon').value = s.icon || '📚';
+      document.getElementById('sj-branch').value = libSelBranch;
+      document.getElementById('sj-year').value = libSelYear;
+      document.getElementById('subject-modal').classList.add('open');
+    }
+    function closeSubjectModal() { document.getElementById('subject-modal').classList.remove('open'); }
+
+    function saveSubject() {
+      const code = document.getElementById('sj-code').value.trim();
+      const name = document.getElementById('sj-name').value.trim();
+      if (!code || !name) { showToast('Code and Name are required', 'err'); return; }
+      const branch = document.getElementById('sj-branch').value;
+      const year   = parseInt(document.getElementById('sj-year').value);
+      const icon   = document.getElementById('sj-icon').value.trim() || '📚';
+      const desc   = document.getElementById('sj-desc').value.trim();
+
+      const subjects = getSubjects();
+      if (!subjects[branch]) subjects[branch] = {};
+      if (!subjects[branch][year]) subjects[branch][year] = [];
+
+      if (editingSubjectIdx !== null) {
+        subjects[branch][year][editingSubjectIdx] = { ...subjects[branch][year][editingSubjectIdx], code, name, icon, desc };
+        showToast('Subject updated ✅', 'ok');
+      } else {
+        subjects[branch][year].push({ id: branch.toLowerCase() + year + '_' + Date.now(), code, name, icon, desc });
+        showToast('Subject added ✅', 'ok');
+      }
+      saveSubjects(subjects);
+      // Update lib selectors to match where subject was saved
+      libSelBranch = branch; libSelYear = year;
+      closeSubjectModal();
+      renderSubjectsTable();
+    }
+
+    function deleteSubject(idx) {
+      if (!confirm('Delete this subject?')) return;
+      const subjects = getSubjects();
+      subjects[libSelBranch][libSelYear].splice(idx, 1);
+      saveSubjects(subjects);
+      showToast('Subject deleted', 'info');
+      renderSubjectsTable();
+    }
+
+    // ── INIT ──
+    renderDashboard();
+    /* ── SUGGESTIONS ── */
+    function renderSuggestions() {
+      var list = getSuggestions();
+      var pending = list.filter(function(s){ return s.status==='pending'; }).length;
+      var b = document.getElementById('sugg-nav-badge');
+      if (b) { b.textContent = pending; b.style.display = pending > 0 ? '' : 'none'; }
+      document.getElementById('sugg-stats-lib').innerHTML = [
+        {icon:'💡',val:list.length,lbl:'Total'},{icon:'⏳',val:pending,lbl:'Pending'},
+        {icon:'✅',val:list.filter(function(s){return s.status==='approved';}).length,lbl:'Approved'},
+        {icon:'❌',val:list.filter(function(s){return s.status==='rejected';}).length,lbl:'Rejected'}
+      ].map(function(s){ return '<div class="stat-card"><span class="stat-icon">'+s.icon+'</span><div class="stat-val">'+s.val+'</div><div class="stat-lbl">'+s.lbl+'</div></div>'; }).join('');
+      document.getElementById('sugg-list-lib').innerHTML = list.length
+        ? list.slice().reverse().map(function(s){
+            var col = s.status==='approved'?'var(--green)':s.status==='rejected'?'var(--red)':'var(--amber)';
+            var bg  = s.status==='approved'?'var(--green-dim)':s.status==='rejected'?'var(--red-dim)':'rgba(255,179,71,0.1)';
+            var bdr = s.status==='approved'?'rgba(0,255,136,0.3)':s.status==='rejected'?'rgba(255,77,109,0.3)':'rgba(255,179,71,0.3)';
+            return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:0.75rem">'
+              +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem">'
+              +'<div style="display:flex;align-items:center;gap:0.5rem">'
+              +'<span style="font-family:var(--font-mono);font-size:0.58rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;padding:2px 8px;border-radius:4px;color:'+col+';background:'+bg+';border:1px solid '+bdr+'">'+s.status.toUpperCase()+'</span>'
+              +'<span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text3)">'+s.date+' · '+( s.lecturerName||s.lecturerId)+'</span>'
+              +'</div>'
+              +(s.status==='pending'
+                ? '<div style="display:flex;gap:0.4rem">'
+                  +'<button class="btn-icon btn-secondary" data-sid="'+s.id+'" onclick="approveSugg(this.dataset.sid)">✅ Approve</button>'
+                  +'<button class="btn-icon btn-danger" data-sid="'+s.id+'" onclick="rejectSugg(this.dataset.sid)">❌ Reject</button>'
+                  +'</div>'
+                : '<span style="font-size:0.78rem;color:var(--text3)">Reviewed</span>')
+              +'</div>'
+              +'<div style="font-size:0.9rem;font-weight:700;margin-bottom:0.2rem">📚 '+s.bookTitle+'</div>'
+              +'<div style="font-size:0.78rem;color:var(--text3);margin-bottom:0.35rem">by '+(s.bookAuthor||'N/A')+' · '+s.category+'</div>'
+              +'<div style="font-size:0.82rem;color:var(--text2);margin-bottom:0.6rem">'+(s.note||'—')+'</div>'
+              +'<input type="text" id="reply-'+s.id+'" class="form-input" style="font-size:0.8rem;padding:0.4rem 0.75rem" placeholder="Reply to lecturer…" value="'+(s.librarianReply||'')+'">'
+              +'<button class="btn btn-secondary btn-sm" style="margin-top:0.4rem" data-sid="'+s.id+'" onclick="saveReply(this.dataset.sid)">💬 Save Reply</button>'
+              +'</div>';
+          }).join('')
+        : '<div class="empty-state"><span class="empty-icon">💡</span><div class="empty-text">No suggestions yet</div></div>';
+    }
+    function approveSugg(id) {
+      var list=getSuggestions(), idx=list.findIndex(function(s){return s.id===id;});
+      if(idx<0)return; list[idx].status='approved';
+      var inp=document.getElementById('reply-'+id); if(inp)list[idx].librarianReply=inp.value;
+      saveSuggestions(list); showToast('Approved ✅','ok'); renderSuggestions();
+    }
+    function rejectSugg(id) {
+      var list=getSuggestions(), idx=list.findIndex(function(s){return s.id===id;});
+      if(idx<0)return; list[idx].status='rejected';
+      var inp=document.getElementById('reply-'+id); if(inp)list[idx].librarianReply=inp.value;
+      saveSuggestions(list); showToast('Rejected','info'); renderSuggestions();
+    }
+    function saveReply(id) {
+      var list=getSuggestions(), idx=list.findIndex(function(s){return s.id===id;});
+      if(idx<0)return; var inp=document.getElementById('reply-'+id);
+      if(inp)list[idx].librarianReply=inp.value; saveSuggestions(list); showToast('Reply saved 💬','ok');
+    }
+
+    /* ── SUBJECT-BOOKS ── */
+    var sbmBranch='CSE', sbmYear=1, sbmSubjectId='', sbmSubjectName='';
+    function openSubjectBooksModal(branch, year, subjectId, subjectName) {
+      sbmBranch=branch; sbmYear=parseInt(year); sbmSubjectId=subjectId; sbmSubjectName=subjectName;
+      document.getElementById('sbm-title').textContent='📚 Books for: '+subjectName;
+      renderSBM(); document.getElementById('subject-books-modal').classList.add('open');
+    }
+    function closeSubjectBooksModal() { document.getElementById('subject-books-modal').classList.remove('open'); }
+    function renderSBM() {
+      var allBooks=getBooks(), assigned=getSubjectBookIds(sbmBranch,sbmYear,sbmSubjectId);
+      // Assigned panel
+      document.getElementById('sbm-assigned').innerHTML = assigned.length
+        ? assigned.map(function(bid){
+            var b=allBooks.find(function(x){return x.id===bid;}); if(!b)return '';
+            return '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:0.35rem">'
+              +'<span style="font-size:1.3rem">'+b.cover+'</span>'
+              +'<div style="flex:1;min-width:0"><div style="font-size:0.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+b.title+'</div>'
+              +'<div style="font-size:0.7rem;color:var(--text3)">'+b.author+'</div></div>'
+              +'<button class="btn-icon btn-danger" data-bid="'+bid+'" onclick="removeSBM(this.dataset.bid)">✕</button></div>';
+          }).join('')
+        : '<div style="text-align:center;padding:1.5rem 0;color:var(--text3);font-size:0.82rem">No books assigned yet.<br>Use the Catalog or Add New Book tab.</div>';
+      // Catalog panel with search
+      var q = (document.getElementById('sbm-search') ? document.getElementById('sbm-search').value : '').toLowerCase();
+      var unassigned=allBooks.filter(function(b){
+        return !assigned.includes(b.id) && (!q || b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q));
+      });
+      document.getElementById('sbm-catalog').innerHTML = unassigned.length
+        ? unassigned.map(function(b){
+          return '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0.25rem;border-bottom:1px solid var(--border)">'
+            +'<span style="font-size:1.1rem">'+b.cover+'</span>'
+            +'<div style="flex:1;min-width:0"><div style="font-size:0.78rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+b.title+'</div>'
+            +'<div style="font-size:0.66rem;color:var(--text3)">'+b.author+' · '+b.category+'</div></div>'
+            +'<button class="btn btn-primary btn-sm" data-bid="'+b.id+'" onclick="addSBM(this.dataset.bid)">+ Add</button></div>';
+        }).join('')
+        : '<p style="font-size:0.82rem;color:var(--text3);padding:1rem 0">No matching books.</p>';
+    }
+    function addSBM(bookId) {
+      var ids=getSubjectBookIds(sbmBranch,sbmYear,sbmSubjectId);
+      if(!ids.includes(bookId)){ids.push(bookId);setSubjectBookIds(sbmBranch,sbmYear,sbmSubjectId,ids);}
+      renderSBM(); showToast('Book added ✅','ok');
+    }
+    function removeSBM(bookId) {
+      var ids=getSubjectBookIds(sbmBranch,sbmYear,sbmSubjectId).filter(function(id){return id!==bookId;});
+      setSubjectBookIds(sbmBranch,sbmYear,sbmSubjectId,ids); renderSBM(); showToast('Book removed','info');
+    }
+
+    /* ── ENHANCED SUBJECT-BOOKS MODAL ── */
+    var sbmCurrentTab = 'assigned';
+    function switchSBMTab(tab) {
+      sbmCurrentTab = tab;
+      ['assigned','catalog','new'].forEach(function(t) {
+        document.getElementById('sbm-panel-' + t).style.display = t === tab ? '' : 'none';
+        var btn = document.getElementById('sbm-tab-' + t);
+        if (t === tab) {
+          btn.style.background = 'rgba(155,89,255,0.12)'; btn.style.color = '#9b59ff';
+          btn.style.borderColor = 'rgba(155,89,255,0.45)';
+        } else {
+          btn.style.background = 'var(--surface)'; btn.style.color = 'var(--text2)';
+          btn.style.borderColor = 'var(--border)';
+        }
+      });
+      if (tab === 'catalog') renderSBM();
+    }
+    function addNewBookToSubject() {
+      var title = document.getElementById('sbm-new-title').value.trim();
+      if (!title) { showToast('Book title is required', 'err'); return; }
+      var books = getBooks();
+      var newBook = {
+        id: 'b' + Date.now(),
+        title: title,
+        author: document.getElementById('sbm-new-author').value.trim() || 'Unknown',
+        category: document.getElementById('sbm-new-cat').value,
+        difficulty: document.getElementById('sbm-new-diff').value,
+        cover: document.getElementById('sbm-new-cover').value.trim() || '📚',
+        copies: parseInt(document.getElementById('sbm-new-copies').value) || 3,
+        description: document.getElementById('sbm-new-desc').value.trim() || '',
+        rating: 4.0, popularity: 70,
+        concepts: [], pages: 0, year: new Date().getFullYear()
+      };
+      books.push(newBook);
+      saveBooks(books);
+      // Also assign it directly to this subject
+      var ids = getSubjectBookIds(sbmBranch, sbmYear, sbmSubjectId);
+      ids.push(newBook.id);
+      setSubjectBookIds(sbmBranch, sbmYear, sbmSubjectId, ids);
+      // Clear form
+      document.getElementById('sbm-new-title').value = '';
+      document.getElementById('sbm-new-author').value = '';
+      document.getElementById('sbm-new-desc').value = '';
+      document.getElementById('sbm-new-cover').value = '📚';
+      showToast('Book added to library & subject ✅', 'ok');
+      switchSBMTab('assigned');
+      renderSBM();
+      renderBooksTable(); // refresh main books table too
+    }
+
+    /* ══════════════════════════════════════════════════
+       CO4/CO5 — SECURITY PANEL + EVENT LOG
+    ══════════════════════════════════════════════════ */
+    var dslLogEntries = [];
+    function dslLog(msg) {
+      const ts = new Date().toLocaleTimeString();
+      dslLogEntries.unshift('[' + ts + '] ' + msg);
+      if (dslLogEntries.length > 30) dslLogEntries.pop();
+      const el = document.getElementById('feature-log');
+      if (el) el.innerHTML = dslLogEntries.join('<br>');
+    }
+
+    function renderSecurity() {
+      /* CO5: Security headers info rendered via DOM manipulation */
+      const headers = [
+        { name:'X-Frame-Options',         value:'DENY',              desc:'Prevents this app from being embedded in iframes (clickjacking protection)' },
+        { name:'X-XSS-Protection',        value:'1; mode=block',     desc:'Instructs older browsers to block detected XSS attacks' },
+        { name:'Content-Security-Policy', value:"default-src 'self'",desc:'Restricts which scripts/styles/fonts can be loaded' },
+        { name:'Referrer-Policy',         value:'no-referrer',       desc:'Hides referrer information from external requests' },
+      ];
+      const el = document.getElementById('sec-headers-list');
+      if (!el) return;
+      /* CO4 DOM Manipulation: build elements via createElement */
+      el.innerHTML = '';
+      headers.forEach(function(h) {
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:0.6rem 0;border-bottom:1px solid var(--border)';
+        const badge = document.createElement('span');
+        badge.style.cssText = 'font-family:var(--font-mono);font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--green-dim);color:var(--green);border:1px solid rgba(0,255,136,0.3);margin-right:0.5rem';
+        badge.textContent = '✓ ACTIVE';
+        const name = document.createElement('strong');
+        name.style.cssText = 'font-size:0.82rem;color:var(--text)';
+        name.textContent = h.name;
+        const val = document.createElement('code');
+        val.style.cssText = 'display:block;font-size:0.72rem;color:var(--cyan);margin:0.2rem 0 0.1rem';
+        val.textContent = h.value;
+        const desc = document.createElement('p');
+        desc.style.cssText = 'font-size:0.75rem;color:var(--text3);margin:0';
+        desc.textContent = h.desc;
+        row.appendChild(badge);
+        row.appendChild(name);
+        row.appendChild(val);
+        row.appendChild(desc);
+        el.appendChild(row);
+      });
+      dslLog('[CO5 Security] Security panel rendered — 4 headers active');
+    }
+
+    function testXSSSanitizer(raw) {
+      /* CO4 Exception Handling: try/catch around sanitize call */
+      try {
+        const clean = sanitize(raw);
+        const out = document.getElementById('xss-output');
+        if (out) {
+          out.textContent = clean || '(empty)';
+          out.style.color = clean !== raw ? 'var(--amber)' : 'var(--green)';
+        }
+        if (clean !== raw) {
+          dslLog('[CO5 Security] XSS sanitizer cleaned input: "' + raw.slice(0,40) + '"');
+          const logEl = document.getElementById('xss-log');
+          if (logEl) {
+            logEl.innerHTML = '⚠️ Malicious input detected and sanitized<br>' +
+              'Raw: <span style="color:var(--red)">' + raw.slice(0,60) + '</span><br>' +
+              'Clean: <span style="color:var(--green)">' + clean.slice(0,60) + '</span>';
+          }
+        }
+      } catch(err) {
+        showToast('Sanitizer error: ' + err.message, 'err');
+        console.error('[testXSSSanitizer]', err);
+      }
+    }
+
+    /* CO4 Event Delegation on books-tbody: one listener handles all Edit/Delete clicks */
+    document.addEventListener('DOMContentLoaded', function() {
+      const tbody = document.getElementById('books-tbody');
+      if (tbody) {
+        tbody.addEventListener('click', function(e) {
+          const editBtn = e.target.closest('[onclick*="openEditBookModal"]');
+          const delBtn  = e.target.closest('[onclick*="askDeleteBook"]');
+          if (editBtn) dslLog('[CO4 Event Delegation] Edit book clicked');
+          if (delBtn)  dslLog('[CO4 Event Delegation] Delete book clicked');
+        });
+      }
+
+      /* CO4 Keyboard: Escape closes any open modal */
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.modal-overlay.open').forEach(function(m) {
+            m.classList.remove('open');
+          });
+          dslLog('[CO4 Keyboard Event] Escape pressed — modals closed');
+        }
+      });
+
+      /* CO4 Focus/Blur events on search inputs */
+      document.querySelectorAll('.search-input').forEach(function(inp) {
+        inp.addEventListener('focus', function() {
+          this.parentElement.style.borderColor = 'rgba(0,212,255,0.6)';
+          dslLog('[CO4 Focus Event] Search focused');
+        });
+        inp.addEventListener('blur', function() {
+          this.parentElement.style.borderColor = '';
+        });
+      });
+
+      /* CO4 MutationObserver: watch stats grid for changes */
+      const statsEl = document.getElementById('fine-stats');
+      if (statsEl) {
+        const obs = new MutationObserver(function(muts) {
+          muts.forEach(function(m) {
+            if (m.type === 'childList' && m.addedNodes.length) {
+              dslLog('[CO4 MutationObserver] Fine stats updated — ' + m.addedNodes.length + ' nodes added');
+            }
+          });
+        });
+        obs.observe(statsEl, { childList: true });
+      }
+
+      /* CO4 Custom Event: listen for bookBorrowed dispatched by student/lecturer pages */
+      document.addEventListener('bookBorrowed', function(e) {
+        dslLog('[CO4 Custom Event] bookBorrowed received: ' + JSON.stringify(e.detail));
+      });
+
+      dslLog('[CO4 Init] Dashboard loaded — event listeners attached');
+    });
+
+  </script>
+</body>
+</html>

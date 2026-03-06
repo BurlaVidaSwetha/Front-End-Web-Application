@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- CO5: Security Headers -->
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; font-src https://fonts.gstatic.com;">
+  <meta http-equiv="Referrer-Policy" content="no-referrer">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lecturer Dashboard — Digital Smart Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .section { display:none; animation:fadeUp 0.35s ease; }
+    .section.active { display:block; }
+    .tab-btn { padding:0.38rem 0.9rem; border-radius:20px; font-size:0.82rem; font-weight:600; border:1px solid var(--border); background:var(--surface); color:var(--text2); cursor:pointer; transition:all var(--transition); }
+    .tab-btn:hover { border-color:var(--border2); color:var(--text); }
+    .tab-btn.active { background:rgba(155,89,255,0.12); border-color:rgba(155,89,255,0.45); color:#9b59ff; }
+    .chip { font-size:0.78rem; font-weight:500; padding:0.35rem 0.85rem; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--text2); transition:all var(--transition); cursor:pointer; display:inline-block; }
+    .chip:hover { border-color:var(--border2); color:var(--text); }
+    .chip.active { background:rgba(155,89,255,0.12); border-color:rgba(155,89,255,0.45); color:#9b59ff; }
+    .lect-books-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(175px,1fr)); gap:1rem; }
+    .lect-book-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; position:relative; overflow:hidden; transition:all var(--transition); }
+    .lect-book-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#9b59ff,#ff6eb4); opacity:0; transition:opacity var(--transition); }
+    .lect-book-card:hover { border-color:rgba(155,89,255,0.4); transform:translateY(-3px); box-shadow:0 8px 28px rgba(0,0,0,0.4); }
+    .lect-book-card:hover::before { opacity:1; }
+    .lect-issued-row { display:flex; align-items:center; gap:1rem; padding:0.85rem 1rem; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+    .lect-issued-row:last-child { border-bottom:none; }
+    .subj-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:1rem; }
+    .subj-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; cursor:pointer; transition:all var(--transition); position:relative; overflow:hidden; }
+    .subj-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,#9b59ff,#ff6eb4); opacity:0; transition:opacity var(--transition); }
+    .subj-card:hover { border-color:rgba(155,89,255,0.4); transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,0.35); }
+    .subj-card:hover::before { opacity:1; }
+    .sugg-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; margin-bottom:0.75rem; }
+    .fine-due  { color:var(--red);   font-family:var(--font-mono); font-size:0.82rem; font-weight:700; }
+    .fine-ok   { color:var(--green); font-family:var(--font-mono); font-size:0.82rem; font-weight:700; }
+    .overdue-row td { background:rgba(255,77,109,0.04); }
+    .borrow-cover { height:90px; background:linear-gradient(135deg,rgba(155,89,255,0.15),rgba(255,110,180,0.12)); border-radius:18px 18px 0 0; display:flex; align-items:center; justify-content:center; font-size:3.2rem; border-bottom:1px solid var(--border); }
+    .lect-chip { font-family:var(--font-mono); font-size:0.58rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; padding:2px 8px; border-radius:4px; color:#9b59ff; background:rgba(155,89,255,0.1); border:1px solid rgba(155,89,255,0.25); }
+    .pu { color:#9b59ff; background:rgba(155,89,255,0.1); border:1px solid rgba(155,89,255,0.2); font-family:var(--font-mono); font-size:0.58rem; text-transform:uppercase; letter-spacing:0.1em; padding:2px 8px; border-radius:4px; display:inline-block; }
+    .sugg-badge-p { background:rgba(255,179,71,0.12); color:var(--amber); border:1px solid rgba(255,179,71,0.3); font-family:var(--font-mono); font-size:0.58rem; text-transform:uppercase; letter-spacing:0.1em; padding:2px 8px; border-radius:4px; font-weight:700; }
+    .sugg-badge-a { background:var(--green-dim); color:var(--green); border:1px solid rgba(0,255,136,0.3); font-family:var(--font-mono); font-size:0.58rem; text-transform:uppercase; letter-spacing:0.1em; padding:2px 8px; border-radius:4px; font-weight:700; }
+    .sugg-badge-r { background:var(--red-dim); color:var(--red); border:1px solid rgba(255,77,109,0.3); font-family:var(--font-mono); font-size:0.58rem; text-transform:uppercase; letter-spacing:0.1em; padding:2px 8px; border-radius:4px; font-weight:700; }
+    .reply-box { margin-top:0.6rem; padding:0.5rem 0.75rem; background:var(--surface2); border-radius:8px; border-left:3px solid var(--cyan); font-size:0.78rem; color:var(--text2); }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="orb-wrap"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+
+  <aside class="sidebar" id="sidebar">
+    <header class="sidebar-header"><div class="sidebar-logo"><span class="logo-icon">📚</span><div class="logo-text">Smart<span>Lib</span></div></div></header>
+    <div class="sidebar-user-card">
+      <div class="user-avatar" id="sb-avatar">L</div>
+      <div><div class="user-name" id="sb-name">Lecturer</div><span class="lect-chip">🧑‍🏫 LECTURER</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" onclick="navigate('dashboard',this)"><span class="nav-icon">🏠</span><span class="nav-text">Dashboard</span></a>
+      <a class="nav-item" onclick="navigate('borrow',this)"><span class="nav-icon">📖</span><span class="nav-text">Borrow Books</span></a>
+      <a class="nav-item" onclick="navigate('issued',this)"><span class="nav-icon">📋</span><span class="nav-text">My Borrowed Books</span></a>
+      <a class="nav-item" onclick="navigate('fines',this)"><span class="nav-icon">💰</span><span class="nav-text">Fine &amp; Dues</span></a>
+      <a class="nav-item" onclick="navigate('subjects',this)"><span class="nav-icon">📘</span><span class="nav-text">Student Subjects</span></a>
+      <a class="nav-item" onclick="navigate('suggest',this)">
+        <span class="nav-icon">💡</span><span class="nav-text">Suggest to Librarian</span>
+        <span class="badge badge-red" id="pend-badge" style="display:none">0</span>
+      </a>
+      <a class="nav-item" onclick="navigate('profile',this)"><span class="nav-icon">👤</span><span class="nav-text">My Profile</span></a>
+    </nav>
+    <div class="sidebar-footer"><button class="logout-btn" onclick="doLogout()">🚪 Logout</button></div>
+  </aside>
+
+  <button class="hamburger" id="hamburger" onclick="toggleSidebarLect()"><span></span><span></span><span></span></button>
+  <div class="sidebar-overlay" id="sb-overlay" onclick="toggleSidebarLect()"></div>
+
+  <main class="main-content page-wrap">
+
+    <!-- DASHBOARD -->
+    <section id="sec-dashboard" class="section active">
+      <div class="page-header"><div>
+        <h1 class="page-title" id="dash-greeting">Good morning, Lecturer!</h1>
+        <p class="page-subtitle">Faculty academic portal overview</p>
+      </div></div>
+      <div class="stats-grid" id="dash-stats"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1rem" id="dash-grid">
+        <div class="glass-card">
+          <div class="card-head"><h2 class="card-heading">📋 Currently Borrowed</h2>
+            <button class="btn btn-secondary btn-sm" onclick="navigate('issued',document.querySelectorAll('.nav-item')[2])">View All →</button></div>
+          <div id="dash-borrowed"></div>
+        </div>
+        <div class="glass-card">
+          <div class="card-head"><h2 class="card-heading">💡 My Suggestions</h2>
+            <button class="btn btn-secondary btn-sm" onclick="navigate('suggest',document.querySelectorAll('.nav-item')[5])">View All →</button></div>
+          <div id="dash-suggestions"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BORROW -->
+    <section id="sec-borrow" class="section">
+      <div class="page-header"><div>
+        <h1 class="page-title">📖 Borrow Books</h1>
+        <p class="page-subtitle" id="borrow-count">Browse and borrow from the library</p>
+      </div></div>
+      <div class="glass-card" style="padding:1rem 1.25rem;margin-bottom:1rem">
+        <div class="search-wrap" style="margin-bottom:0.75rem">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="borrow-search" class="search-input" placeholder="Search title or author…" oninput="renderBorrow()">
+        </div>
+        <div id="borrow-filters" class="filter-row"></div>
+      </div>
+      <div class="lect-books-grid" id="borrow-grid"></div>
+    </section>
+
+    <!-- ISSUED -->
+    <section id="sec-issued" class="section">
+      <div class="page-header"><div>
+        <h1 class="page-title">📋 My Borrowed Books</h1>
+        <p class="page-subtitle">Books currently issued to you</p>
+      </div></div>
+      <div class="glass-card" style="padding:0;overflow:hidden"><div id="issued-list"></div></div>
+    </section>
+
+    <!-- FINES -->
+    <section id="sec-fines" class="section">
+      <div class="page-header"><div>
+        <h1 class="page-title">💰 Fine &amp; Due Payment</h1>
+        <p class="page-subtitle">Outstanding fines and overdue books</p>
+        <!-- CO5 Semantic: <o> displays computed fine total -->
+        <output id="lect-fine-output" aria-label="Total fine due" style="font-family:var(--font-mono);font-weight:700;color:var(--cyan);font-size:0.9rem;align-self:center"></o>
+      </div></div>
+      <div id="fines-wrap"></div>
+    </section>
+
+    <!-- SUBJECTS -->
+    <section id="sec-subjects" class="section">
+      <div class="page-header"><div>
+        <h1 class="page-title">📘 Student Subjects</h1>
+        <p class="page-subtitle">Browse subjects and assigned books by branch and year</p>
+      </div></div>
+      <div class="glass-card" style="margin-bottom:1rem">
+        <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
+          <div>
+            <label class="form-label" style="margin-bottom:0.4rem">Branch</label>
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap" id="subj-branch-tabs">
+              <button class="tab-btn active" onclick="selBranch('CSE',this)">💻 CSE</button>
+              <button class="tab-btn" onclick="selBranch('CSIT',this)">🖥️ CSIT</button>
+              <button class="tab-btn" onclick="selBranch('ECE',this)">📡 ECE</button>
+              <button class="tab-btn" onclick="selBranch('AIDS',this)">🤖 AIDS</button>
+            </div>
+          </div>
+          <div>
+            <label class="form-label" style="margin-bottom:0.4rem">Year</label>
+            <div style="display:flex;gap:0.4rem" id="subj-year-tabs">
+              <button class="tab-btn active" onclick="selYear(1,this)">Year 1</button>
+              <button class="tab-btn" onclick="selYear(2,this)">Year 2</button>
+              <button class="tab-btn" onclick="selYear(3,this)">Year 3</button>
+              <button class="tab-btn" onclick="selYear(4,this)">Year 4</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="subj-back-row" style="display:none;margin-bottom:1rem;display:flex;align-items:center;gap:0.75rem">
+        <button class="btn btn-secondary btn-sm" onclick="backToSubjects()">← Back</button>
+        <span id="subj-drill-title" style="font-size:0.85rem;color:var(--text2)"></span>
+      </div>
+      <div id="subj-container"></div>
+    </section>
+
+    <!-- SUGGEST -->
+    <section id="sec-suggest" class="section">
+      <div class="page-header"><div>
+        <h1 class="page-title">💡 Suggest to Librarian</h1>
+        <p class="page-subtitle">Recommend books to be added to the library</p>
+      </div></div>
+      <div class="stats-grid" id="sugg-stats"></div>
+      <div class="glass-card" style="margin:1.25rem 0">
+        <h2 class="card-heading" style="margin-bottom:1.25rem">📬 New Suggestion</h2>
+        <div class="form-group"><label class="form-label">Book Title *</label><input type="text" id="sg-title" class="form-input" placeholder="e.g. Clean Architecture"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div class="form-group"><label class="form-label">Author</label><input type="text" id="sg-author" class="form-input" placeholder="e.g. Robert C. Martin"></div>
+          <div class="form-group"><label class="form-label">Category</label>
+            <select id="sg-cat" class="form-select"><option>Programming</option><option>Academic</option><option>Personality</option><option>Novels</option><option>Career</option></select>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Reason / Note</label><textarea id="sg-note" class="form-textarea" placeholder="Why should this book be added?"></textarea></div>
+        <button class="btn btn-primary" onclick="submitSugg()">📬 Send Suggestion</button>
+      </div>
+      <div class="glass-card">
+        <h2 class="card-heading" style="margin-bottom:1.25rem">📜 My Suggestion History</h2>
+        <div id="sugg-history"></div>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="sec-profile" class="section">
+      <div class="page-header"><div>
+        <h1 class="page-title">👤 My Profile</h1>
+        <p class="page-subtitle">Your faculty account details</p>
+      </div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start" id="prof-grid">
+        <div class="glass-card" style="text-align:center">
+          <div class="profile-avatar-big" id="prof-av">L</div>
+          <div class="profile-name" id="prof-nm">Lecturer</div>
+          <div style="margin-top:4px"><span class="lect-chip">🧑‍🏫 LECTURER</span></div>
+          <ul class="profile-stats" style="margin-top:1.25rem;text-align:left" id="prof-stats"></ul>
+        </div>
+        <div class="glass-card">
+          <h2 class="card-heading" style="margin-bottom:1.25rem">💰 Fine Status</h2>
+          <div id="prof-fine"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- BORROW MODAL -->
+  <div id="borrow-modal" class="modal-overlay" onclick="if(event.target===this)closeBorrowModal()">
+    <div class="modal-box" style="padding:0;overflow:hidden">
+      <figure class="borrow-cover" id="bm-icon" style="margin:0" aria-label="Book cover">📚</figure>
+      <div style="padding:1.5rem">
+        <button class="modal-close-btn" onclick="closeBorrowModal()">✕</button>
+        <div class="modal-title" id="bm-title">Borrow Book</div>
+        <div style="font-size:0.85rem;color:var(--text2);margin-bottom:1.25rem" id="bm-author"></div>
+        <input type="hidden" id="bm-id">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div class="form-group"><label class="form-label">Issue Date</label><input type="date" id="bm-issue" class="form-input"></div>
+          <div class="form-group"><label class="form-label">Due Date</label><input type="date" id="bm-due" class="form-input"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeBorrowModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="confirmBorrow()">📖 Confirm Borrow</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+  <script>
+    // ── AUTH GUARD ──
+    var CU = getCurrentUser();
+    if (!CU || CU.role !== 'lecturer') window.location.href = 'login-lecturer.html';
+
+    document.getElementById('sb-avatar').textContent = (CU.name || 'L')[0].toUpperCase();
+    document.getElementById('sb-name').textContent   = CU.name || 'Lecturer';
+    document.getElementById('dash-greeting').textContent = getGreeting() + ', ' + (CU.name || 'Lecturer') + '! 🧑‍🏫';
+
+    // ── DEFAULT SUBJECTS (fallback if librarian hasn't saved yet) ──
+    var DEFAULT_SUBJECTS_LECT = {
+      CSE:{1:[{id:'cse1_1',code:'DSA1',name:'Data Structures & Algorithms I',icon:'🌲',desc:'Arrays, Linked Lists, Stacks, Queues'},{id:'cse1_2',code:'DSA2',name:'Data Structures & Algorithms II',icon:'🔄',desc:'Graphs, Heaps, Advanced Trees'},{id:'cse1_3',code:'DM',name:'Discrete Mathematics',icon:'∑',desc:'Logic, Sets, Graph Theory'},{id:'cse1_4',code:'JAVA',name:'Java Programming',icon:'☕',desc:'OOP, Collections, Exception Handling'},{id:'cse1_5',code:'FWD',name:'Front-End Web Dev',icon:'🌐',desc:'HTML, CSS, JavaScript, React'},{id:'cse1_6',code:'DDCA',name:'Digital Design & Computer Architecture',icon:'💡',desc:'Logic Gates, Boolean Algebra'},{id:'cse1_7',code:'DBMS',name:'Database Management Systems',icon:'🗃️',desc:'SQL, ER Diagrams, Normalization'},{id:'cse1_8',code:'MDSA',name:'Maths for Data Science',icon:'📊',desc:'Statistics, Probability, Linear Algebra'},{id:'cse1_9',code:'AOOP',name:'Advanced OOP',icon:'🧩',desc:'Design Patterns, SOLID Principles'},{id:'cse1_10',code:'AI',name:'Artificial Intelligence',icon:'🤖',desc:'Search, Knowledge Representation, ML'}],2:[{id:'cse2_1',code:'OS',name:'Operating Systems',icon:'⚙️',desc:'Processes, Scheduling, Memory'},{id:'cse2_2',code:'CN',name:'Computer Networks',icon:'🌐',desc:'OSI, TCP/IP, Routing'},{id:'cse2_3',code:'TOC',name:'Theory of Computation',icon:'🔁',desc:'Automata, Turing Machines'},{id:'cse2_4',code:'SE',name:'Software Engineering',icon:'🛠️',desc:'SDLC, Agile, UML, Testing'},{id:'cse2_5',code:'DAA',name:'Design & Analysis of Algorithms',icon:'📐',desc:'Greedy, DP, NP-Completeness'},{id:'cse2_6',code:'COA',name:'Computer Organization',icon:'🏗️',desc:'CPU, Pipelining, Cache'},{id:'cse2_7',code:'MP',name:'Microprocessors',icon:'🔬',desc:'8086, Assembly, Embedded C'},{id:'cse2_8',code:'EVS',name:'Environmental Science',icon:'🌿',desc:'Ecology, Pollution, Sustainability'}],3:[{id:'cse3_1',code:'ML',name:'Machine Learning',icon:'🧠',desc:'Regression, Classification, Clustering'},{id:'cse3_2',code:'DL',name:'Deep Learning',icon:'🔥',desc:'CNN, RNN, Transformers'},{id:'cse3_3',code:'CC',name:'Cloud Computing',icon:'☁️',desc:'AWS, Azure, GCP, Containers'},{id:'cse3_4',code:'IS',name:'Information Security',icon:'🔐',desc:'Cryptography, Network Security'},{id:'cse3_5',code:'WD',name:'Full Stack Web Dev',icon:'💻',desc:'Node.js, React, REST APIs'},{id:'cse3_6',code:'DC',name:'Distributed Computing',icon:'🔗',desc:'MapReduce, Consensus'},{id:'cse3_7',code:'CD',name:'Compiler Design',icon:'⚡',desc:'Parsing, Code Generation'},{id:'cse3_8',code:'PE',name:'Professional Ethics',icon:'⚖️',desc:'Cyber Law, IP Rights'}],4:[{id:'cse4_1',code:'BD',name:'Big Data Analytics',icon:'📦',desc:'Hadoop, Spark, HDFS'},{id:'cse4_2',code:'IOT',name:'Internet of Things',icon:'📡',desc:'IoT, Sensors, Edge Computing'},{id:'cse4_3',code:'BC',name:'Blockchain',icon:'⛓️',desc:'Smart Contracts, DeFi'},{id:'cse4_4',code:'CV',name:'Computer Vision',icon:'👁️',desc:'OpenCV, Object Detection'},{id:'cse4_5',code:'NLP',name:'NLP',icon:'📝',desc:'Transformers, BERT, Sentiment'},{id:'cse4_6',code:'SD',name:'Software Architecture',icon:'🏛️',desc:'Microservices, System Design'},{id:'cse4_7',code:'RP',name:'Capstone Project',icon:'🔬',desc:'Industry-level project'},{id:'cse4_8',code:'EL',name:'Elective',icon:'🎯',desc:'Advanced Topics'}]},
+      CSIT:{1:[{id:'csit1_1',code:'DSA1',name:'Data Structures I',icon:'🌲',desc:'Arrays, Stacks, Queues'},{id:'csit1_2',code:'DSA2',name:'Data Structures II',icon:'🔄',desc:'Graphs, Trees'},{id:'csit1_3',code:'DM',name:'Discrete Mathematics',icon:'∑',desc:'Logic, Graph Theory'},{id:'csit1_4',code:'JAVA',name:'Java Programming',icon:'☕',desc:'OOP, Collections'},{id:'csit1_5',code:'FWD',name:'Front-End Web Dev',icon:'🌐',desc:'HTML, CSS, JS'},{id:'csit1_6',code:'DDCA',name:'Digital Design',icon:'💡',desc:'Logic Gates, Circuits'},{id:'csit1_7',code:'DBMS',name:'Database Systems',icon:'🗃️',desc:'SQL, Normalization'},{id:'csit1_8',code:'MDSA',name:'Maths for DS',icon:'📊',desc:'Stats, Probability'},{id:'csit1_9',code:'AOOP',name:'Advanced OOP',icon:'🧩',desc:'Design Patterns'},{id:'csit1_10',code:'AI',name:'Artificial Intelligence',icon:'🤖',desc:'Search, ML Basics'}],2:[{id:'csit2_1',code:'OS',name:'Operating Systems',icon:'⚙️',desc:'Processes, Memory'},{id:'csit2_2',code:'CN',name:'Networks',icon:'🌐',desc:'OSI, TCP/IP'},{id:'csit2_3',code:'SE',name:'Software Engineering',icon:'🛠️',desc:'Agile, SDLC'},{id:'csit2_4',code:'DAA',name:'Algorithm Design',icon:'📐',desc:'Greedy, DP'},{id:'csit2_5',code:'IT',name:'Information Theory',icon:'📡',desc:'Entropy, Coding'},{id:'csit2_6',code:'WT',name:'Web Technologies',icon:'💻',desc:'HTML5, JS, AJAX'},{id:'csit2_7',code:'PM',name:'Project Management',icon:'📋',desc:'Agile, Scrum'},{id:'csit2_8',code:'DW',name:'Data Warehousing',icon:'🏢',desc:'ETL, OLAP'}],3:[{id:'csit3_1',code:'ML',name:'Machine Learning',icon:'🧠',desc:'Supervised, Unsupervised'},{id:'csit3_2',code:'DS',name:'Data Science',icon:'📉',desc:'Pandas, EDA'},{id:'csit3_3',code:'CC',name:'Cloud Computing',icon:'☁️',desc:'Cloud, DevOps'},{id:'csit3_4',code:'IS',name:'InfoSec',icon:'🔐',desc:'Crypto, Firewalls'},{id:'csit3_5',code:'MO',name:'Mobile Dev',icon:'📱',desc:'Android, Flutter'},{id:'csit3_6',code:'BA',name:'Business Analytics',icon:'📈',desc:'Power BI, KPIs'},{id:'csit3_7',code:'NLP',name:'NLP',icon:'📝',desc:'BERT, ChatBots'},{id:'csit3_8',code:'PE',name:'Ethics & Cyber Law',icon:'⚖️',desc:'IT Act, Data Privacy'}],4:[{id:'csit4_1',code:'BD',name:'Big Data',icon:'📦',desc:'Hadoop, Spark'},{id:'csit4_2',code:'AI2',name:'Advanced AI',icon:'🔥',desc:'CNN, GAN, AutoML'},{id:'csit4_3',code:'BC',name:'Blockchain',icon:'⛓️',desc:'DLT, Crypto'},{id:'csit4_4',code:'CY',name:'Cybersecurity',icon:'🛡️',desc:'SIEM, SOC'},{id:'csit4_5',code:'ERP',name:'ERP Systems',icon:'🏭',desc:'SAP, Oracle'},{id:'csit4_6',code:'RP',name:'Capstone',icon:'🔬',desc:'Industry project'},{id:'csit4_7',code:'INT',name:'Internship',icon:'🏢',desc:'Industry training'},{id:'csit4_8',code:'EL',name:'Elective',icon:'🚀',desc:'Emerging Tech'}]},
+      ECE:{1:[{id:'ece1_1',code:'BEE',name:'Basic Electrical Engg',icon:'⚡',desc:"Circuits, KVL/KCL"},{id:'ece1_2',code:'EDT',name:'Electronic Devices',icon:'💡',desc:'Diodes, Transistors'},{id:'ece1_3',code:'DM',name:'Discrete Maths',icon:'∑',desc:'Logic, Graph Theory'},{id:'ece1_4',code:'DDCA',name:'Digital Design',icon:'🔌',desc:'Logic Gates, Flip-Flops'},{id:'ece1_5',code:'PIC',name:'Programming for IoT',icon:'🐍',desc:'C/Python, GPIO'},{id:'ece1_6',code:'SS',name:'Signals & Systems',icon:'〰️',desc:'Fourier, Laplace'},{id:'ece1_7',code:'MDSA',name:'Maths for DS',icon:'📊',desc:'Stats, Linear Algebra'},{id:'ece1_8',code:'EM',name:'Engineering Maths',icon:'➗',desc:'Calculus, DE'},{id:'ece1_9',code:'FWD',name:'Web Development',icon:'🌐',desc:'HTML, CSS, JS'},{id:'ece1_10',code:'AI',name:'AI Fundamentals',icon:'🤖',desc:'Search, ML intro'}],2:[{id:'ece2_1',code:'AEC',name:'Analog Circuits',icon:'📻',desc:'Amplifiers, Oscillators'},{id:'ece2_2',code:'DEC',name:'Digital Electronics',icon:'💾',desc:'Sequential Logic'},{id:'ece2_3',code:'MP',name:'Microprocessors',icon:'🔬',desc:'8051, ARM, Arduino'},{id:'ece2_4',code:'EMT',name:'Electromagnetic Theory',icon:'🧲',desc:"Maxwell's Equations"},{id:'ece2_5',code:'CT',name:'Communication Theory',icon:'📡',desc:'AM/FM, Modulation'},{id:'ece2_6',code:'CN',name:'Computer Networks',icon:'🌐',desc:'OSI, TCP/IP'},{id:'ece2_7',code:'DBMS',name:'Database Systems',icon:'🗃️',desc:'SQL, Normalization'},{id:'ece2_8',code:'EVS',name:'Environmental Science',icon:'🌿',desc:'E-waste, Sustainability'}],3:[{id:'ece3_1',code:'VLSI',name:'VLSI Design',icon:'🔲',desc:'CMOS, Verilog, FPGA'},{id:'ece3_2',code:'DSP',name:'Digital Signal Processing',icon:'🔊',desc:'FFT, FIR/IIR'},{id:'ece3_3',code:'ES',name:'Embedded Systems',icon:'⚙️',desc:'ARM, RTOS'},{id:'ece3_4',code:'IOT',name:'Internet of Things',icon:'📡',desc:'MQTT, Edge'},{id:'ece3_5',code:'WC',name:'Wireless Communications',icon:'📶',desc:'5G, OFDM, MIMO'},{id:'ece3_6',code:'OFC',name:'Optical Fiber',icon:'💎',desc:'WDM, Amplifiers'},{id:'ece3_7',code:'AI',name:'AI for ECE',icon:'🤖',desc:'TinyML, Edge AI'},{id:'ece3_8',code:'PE',name:'Professional Ethics',icon:'⚖️',desc:'IEEE Standards'}],4:[{id:'ece4_1',code:'VLSI2',name:'Advanced VLSI',icon:'🏭',desc:'FinFET, 3D IC'},{id:'ece4_2',code:'RF',name:'RF Engineering',icon:'📡',desc:'Waveguides, Radar'},{id:'ece4_3',code:'ROB',name:'Robotics',icon:'🦾',desc:'PID, Kinematics'},{id:'ece4_4',code:'MED',name:'Medical Electronics',icon:'🏥',desc:'ECG, Imaging'},{id:'ece4_5',code:'AV',name:'Autonomous Vehicles',icon:'🚗',desc:'LiDAR, Path Planning'},{id:'ece4_6',code:'RP',name:'Capstone',icon:'🔬',desc:'Industry project'},{id:'ece4_7',code:'EL',name:'Elective',icon:'🎯',desc:'Advanced Topics'},{id:'ece4_8',code:'INT',name:'Internship',icon:'🏢',desc:'Industry training'}]},
+      AIDS:{1:[{id:'aids1_1',code:'DSA1',name:'Data Structures I',icon:'🌲',desc:'Arrays, Stacks'},{id:'aids1_2',code:'DSA2',name:'Data Structures II',icon:'🔄',desc:'Graphs, Trees'},{id:'aids1_3',code:'DM',name:'Discrete Maths',icon:'∑',desc:'Logic, Graph Theory'},{id:'aids1_4',code:'JAVA',name:'Java Programming',icon:'☕',desc:'OOP, Collections'},{id:'aids1_5',code:'FWD',name:'Web Dev',icon:'🌐',desc:'HTML, CSS, JS, React'},{id:'aids1_6',code:'DDCA',name:'Digital Design',icon:'💡',desc:'Logic Gates, Circuits'},{id:'aids1_7',code:'DBMS',name:'Database Systems',icon:'🗃️',desc:'SQL, NoSQL'},{id:'aids1_8',code:'MDSA',name:'Maths for DS',icon:'📊',desc:'Stats, Probability, LA'},{id:'aids1_9',code:'AOOP',name:'Advanced OOP',icon:'🧩',desc:'Design Patterns, SOLID'},{id:'aids1_10',code:'AI',name:'AI Foundations',icon:'🤖',desc:'Search, ML, Ethics'}],2:[{id:'aids2_1',code:'ML',name:'Machine Learning',icon:'🧠',desc:'Regression, SVM, RF'},{id:'aids2_2',code:'DS',name:'Data Science Python',icon:'📉',desc:'Pandas, Scikit-Learn'},{id:'aids2_3',code:'STA',name:'Statistics',icon:'🎲',desc:'Bayesian, Hypothesis Testing'},{id:'aids2_4',code:'DV',name:'Data Visualization',icon:'📈',desc:'Tableau, Power BI'},{id:'aids2_5',code:'OS',name:'Operating Systems',icon:'⚙️',desc:'Processes, Memory'},{id:'aids2_6',code:'CN',name:'Networks',icon:'🌐',desc:'OSI, TCP/IP, APIs'},{id:'aids2_7',code:'SE',name:'Software Engineering',icon:'🛠️',desc:'Agile, CI/CD'},{id:'aids2_8',code:'BA',name:'Business Analytics',icon:'💼',desc:'KPIs, Decision Science'}],3:[{id:'aids3_1',code:'DL',name:'Deep Learning',icon:'🔥',desc:'CNN, RNN, Transformers'},{id:'aids3_2',code:'BD',name:'Big Data',icon:'📦',desc:'Hadoop, Spark, Kafka'},{id:'aids3_3',code:'NLP',name:'NLP',icon:'📝',desc:'BERT, GPT, Chatbots'},{id:'aids3_4',code:'CV',name:'Computer Vision',icon:'👁️',desc:'Object Detection'},{id:'aids3_5',code:'RL',name:'Reinforcement Learning',icon:'🎮',desc:'Q-Learning, Game AI'},{id:'aids3_6',code:'CC',name:'Cloud & MLOps',icon:'☁️',desc:'SageMaker, MLflow'},{id:'aids3_7',code:'XAI',name:'Explainable AI',icon:'⚖️',desc:'SHAP, LIME, Fairness'},{id:'aids3_8',code:'TS',name:'Time Series',icon:'⏰',desc:'ARIMA, Forecasting'}],4:[{id:'aids4_1',code:'GAI',name:'Generative AI & LLMs',icon:'✨',desc:'GPT, Diffusion, RAG'},{id:'aids4_2',code:'RA',name:'Recommender Systems',icon:'🎯',desc:'Collaborative Filtering'},{id:'aids4_3',code:'FE',name:'Feature Engineering',icon:'⚗️',desc:'AutoML, HPO'},{id:'aids4_4',code:'GNN',name:'Graph Neural Networks',icon:'🕸️',desc:'GCN, Knowledge Graphs'},{id:'aids4_5',code:'DE',name:'Data Engineering',icon:'🔧',desc:'dbt, Airflow, Lakehouse'},{id:'aids4_6',code:'IOT_AI',name:'AI for IoT',icon:'📡',desc:'TinyML, Federated Learning'},{id:'aids4_7',code:'RP',name:'Capstone Project',icon:'🔬',desc:'Industry AI/DS project'},{id:'aids4_8',code:'INT',name:'Internship',icon:'🏢',desc:'Industry training'}]}
+    };
+
+    function getLectSubjects() {
+      try { var s = localStorage.getItem('dsl_subjects'); if (s) return JSON.parse(s); } catch(e) {}
+      return JSON.parse(JSON.stringify(DEFAULT_SUBJECTS_LECT));
+    }
+
+    // ── SIDEBAR ──
+    function toggleSidebarLect() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sb-overlay').classList.toggle('open');
+    }
+
+    // ── NAV ──
+    function navigate(sec, el) {
+      document.querySelectorAll('.section').forEach(function(s){ s.classList.remove('active'); });
+      document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+      document.getElementById('sec-' + sec).classList.add('active');
+      if (el) el.classList.add('active');
+      var map = { dashboard:renderDashboard, borrow:renderBorrow, issued:renderIssued,
+                  fines:renderFines, subjects:renderSubjects, suggest:renderSuggest, profile:renderProfile };
+      if (map[sec]) map[sec]();
+    }
+    function doLogout() { clearCurrentUser(); window.location.href = 'index.html'; }
+
+    // ── DASHBOARD ──
+    function renderDashboard() {
+      var books = getBooks();
+      var state = getLecturerState(CU.id);
+      var users = getUsers();
+      var me    = users.find(function(u){ return u.id === CU.id; }) || CU;
+      var mySupp = getSuggestions().filter(function(s){ return s.lecturerId === CU.id; });
+      var pend = mySupp.filter(function(s){ return s.status === 'pending'; }).length;
+      var pb = document.getElementById('pend-badge');
+      if (pb) { pb.textContent = pend; pb.style.display = pend > 0 ? '' : 'none'; }
+
+      document.getElementById('dash-stats').innerHTML = [
+        {icon:'📚', val:books.length,        lbl:'Library Books'},
+        {icon:'📖', val:state.issued.length, lbl:'Borrowed'},
+        {icon:'💡', val:mySupp.length,        lbl:'Suggestions'},
+        {icon:'💰', val:'₹'+(me.fine||0),    lbl:'Fine Due'}
+      ].map(function(s){ return '<div class="stat-card"><span class="stat-icon">'+s.icon+'</span><div class="stat-val">'+s.val+'</div><div class="stat-lbl">'+s.lbl+'</div></div>'; }).join('');
+
+      var issued = state.issued || [];
+      document.getElementById('dash-borrowed').innerHTML = issued.length
+        ? issued.slice(0,4).map(function(item){
+            var b = books.find(function(x){ return x.id === item.bookId; });
+            if (!b) return '';
+            var od = new Date(item.dueDate) < new Date();
+            return '<div class="lect-issued-row"><span style="font-size:1.6rem">'+b.cover+'</span><div style="flex:1"><div style="font-size:0.875rem;font-weight:600">'+b.title+'</div><div style="font-size:0.72rem;color:var(--text3)">Due: '+item.dueDate+'</div></div><span class="badge '+(od?'badge-red':'badge-green')+'">'+(od?'OVERDUE':'ON TIME')+'</span></div>';
+          }).join('')
+        : '<div class="empty-state"><span class="empty-icon">📭</span><div class="empty-text">No books borrowed yet</div></div>';
+
+      document.getElementById('dash-suggestions').innerHTML = mySupp.length
+        ? mySupp.slice(-4).reverse().map(suggRowHTML).join('')
+        : '<div class="empty-state"><span class="empty-icon">💡</span><div class="empty-text">No suggestions yet</div></div>';
+
+      var g = document.getElementById('dash-grid');
+      if (g) g.style.gridTemplateColumns = window.innerWidth < 900 ? '1fr' : '1fr 1fr';
+    }
+    window.addEventListener('resize', function(){
+      var g = document.getElementById('dash-grid');
+      if (g && document.getElementById('sec-dashboard').classList.contains('active'))
+        g.style.gridTemplateColumns = window.innerWidth < 900 ? '1fr' : '1fr 1fr';
+    });
+
+    // ── BORROW ──
+    var borrowCat = 'All';
+    function renderBorrow() {
+      var books = getBooks();
+      var q = (document.getElementById('borrow-search') ? document.getElementById('borrow-search').value : '').toLowerCase();
+      var state = getLecturerState(CU.id);
+      var cats = ['All','Programming','Academic','Personality','Novels','Career'];
+      document.getElementById('borrow-filters').innerHTML = cats.map(function(c){
+        return '<button class="chip '+(borrowCat===c?'active':'')+'" onclick="setBCat(\''+c+'\')">'+c+'</button>';
+      }).join(' ');
+      var filtered = books.filter(function(b){
+        return (borrowCat==='All'||b.category===borrowCat) && (!q||b.title.toLowerCase().includes(q)||b.author.toLowerCase().includes(q));
+      }).sort(function(a,b){ return b.popularity - a.popularity; });
+      document.getElementById('borrow-count').textContent = 'Showing '+filtered.length+' book'+(filtered.length!==1?'s':'');
+      document.getElementById('borrow-grid').innerHTML = filtered.length
+        ? filtered.map(function(b){ return bookCard(b, state); }).join('')
+        : '<div class="empty-state" style="grid-column:1/-1"><span class="empty-icon">🔍</span><div class="empty-text">No books found</div></div>';
+    }
+    function setBCat(c) { borrowCat = c; renderBorrow(); }
+
+    function bookCard(b, state) {
+      var already = (state.issued||[]).some(function(i){ return i.bookId === b.id; });
+      var price = b.price || 0;
+      var avail = b.availableCopies !== undefined ? b.availableCopies : (b.copies || 5);
+      return '<div class="lect-book-card">'
+        + '<span style="font-size:2.3rem;display:block;margin-bottom:0.6rem">'+b.cover+'</span>'
+        + '<span class="pu">'+b.category+'</span>'
+        + '<div style="font-size:0.875rem;font-weight:700;margin:0.4rem 0 0.2rem;line-height:1.3">'+b.title+'</div>'
+        + '<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem">'+b.author+'</div>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem">'
+        + '<span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--amber)">⭐ '+b.rating+'</span>'
+        + '<span class="book-diff diff-'+b.difficulty+'">'+b.difficulty+'</span></div>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.1rem">'
+        + '<span style="font-family:var(--font-mono);font-size:0.82rem;font-weight:700;color:#9b59ff">₹'+price+' <span style="font-size:0.62rem;font-weight:400;color:var(--text3)">fee</span></span>'
+        + '<span style="font-size:0.68rem;color:var(--text3)">'+avail+' avail</span></div>'
+        + '<button data-bid="'+b.id+'" '+(already?'disabled':'')+' onclick="if(!this.disabled)openBorrowModal(this.dataset.bid)" '
+        + 'style="margin-top:0.6rem;width:100%;padding:0.45rem;border-radius:7px;font-size:0.78rem;font-weight:600;'
+        + 'border:1px solid '+(already?'var(--border)':'rgba(155,89,255,0.4)')+';'
+        + 'color:'+(already?'var(--text3)':'#9b59ff')+';background:'+(already?'none':'rgba(155,89,255,0.1)')+';'
+        + 'cursor:'+(already?'not-allowed':'pointer')+';">'
+        + (already?'✓ Already Borrowed':'📖 Borrow · ₹'+price)+'</button></div>';
+    }
+
+    // ── BORROW MODAL ──
+    function openBorrowModal(bookId) {
+      var book = getBooks().find(function(b){ return b.id === bookId; });
+      if (!book) return;
+      var today = new Date(), due = new Date(today);
+      due.setDate(due.getDate()+14);
+      document.getElementById('bm-icon').textContent    = book.cover;
+      /* CO5 Security: sanitize before DOM insertion */
+      document.getElementById('bm-title').textContent   = sanitize(book.title);
+      document.getElementById('bm-author').textContent  = 'by ' + sanitize(book.author);
+      document.getElementById('bm-id').value            = bookId;
+      document.getElementById('bm-issue').value         = today.toISOString().slice(0,10);
+      document.getElementById('bm-due').value           = due.toISOString().slice(0,10);
+      document.getElementById('borrow-modal').classList.add('open');
+    }
+    function closeBorrowModal() { document.getElementById('borrow-modal').classList.remove('open'); }
+    /* CO4 Exception Handling: confirmBorrow uses try/catch + BorrowError + ValidationError */
+    function confirmBorrow() {
+      try {
+        var bookId    = document.getElementById('bm-id').value;
+        var issueDate = document.getElementById('bm-issue').value;
+        var dueDate   = document.getElementById('bm-due').value;
+        if (!issueDate||!dueDate) throw new ValidationError('Please select both issue and due dates');
+        if (new Date(dueDate) <= new Date(issueDate)) throw new ValidationError('Due date must be after issue date');
+        var state = getLecturerState(CU.id);
+        if ((state.issued||[]).some(function(i){ return i.bookId===bookId; })) throw new BorrowError('You already borrowed this book');
+        var books = getBooks();
+        var book  = books.find(function(b){ return b.id===bookId; });
+        if (!book) throw new BorrowError('Book not found');
+        var avail = book.availableCopies !== undefined ? book.availableCopies : (book.copies||1);
+        if (avail <= 0) throw new BorrowError('No copies currently available');
+        var fee = book.price || 0;
+        state.issued = state.issued||[];
+        state.issued.push({bookId:bookId, issueDate:issueDate, dueDate:dueDate, borrowFee:fee});
+        saveLecturerState(CU.id, state);
+        var bidx = books.findIndex(function(b){ return b.id===bookId; });
+        if (bidx>=0 && books[bidx].availableCopies>0) { books[bidx].availableCopies--; saveBooks(books); }
+        var users = getUsers(), idx = users.findIndex(function(u){ return u.id===CU.id; });
+        if (idx>=0) {
+          users[idx].booksIssued=(users[idx].booksIssued||0)+1;
+          users[idx].fine=(users[idx].fine||0)+fee;
+          saveUsers(users);
+        }
+        closeBorrowModal();
+        showToast('Borrowed! ₹'+fee+' borrow fee added 📖','ok');
+        /* CO4 Custom Event: dispatch bookBorrowed */
+        document.dispatchEvent(new CustomEvent('bookBorrowed', { detail:{bookId:bookId, fee:fee, title:book.title} }));
+        renderBorrow();
+      } catch(err) {
+        if (err instanceof ValidationError) { showToast('⚠️ '+err.message,'err'); }
+        else if (err instanceof BorrowError) { showToast('📚 '+err.message,'err'); }
+        else { showToast('Error: '+err.message,'err'); console.error('[confirmBorrow]',err); }
+      }
+    }
+
+    // ── ISSUED ──
+    function renderIssued() {
+      var state = getLecturerState(CU.id), books = getBooks();
+      document.getElementById('issued-list').innerHTML = (state.issued||[]).length
+        ? (state.issued||[]).map(function(item){
+            var b = books.find(function(x){ return x.id===item.bookId; });
+            if (!b) return '';
+            var od = new Date(item.dueDate) < new Date();
+            return '<div class="lect-issued-row">'
+              + '<span style="font-size:1.8rem">'+b.cover+'</span>'
+              + '<div style="flex:1"><div style="font-size:0.875rem;font-weight:600">'+b.title+'</div>'
+              + '<div style="font-size:0.72rem;color:var(--text3)">'+b.author+'</div>'
+              + '<div style="font-size:0.72rem;color:var(--text3);margin-top:2px">Issued: '+item.issueDate+' · Due: '+item.dueDate+'</div></div>'
+              + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.4rem">'
+              + '<span class="badge '+(od?'badge-red':'badge-green')+'">'+(od?'OVERDUE':'ON TIME')+'</span>'
+              + '<button class="btn btn-secondary btn-sm" data-bid="'+item.bookId+'" onclick="returnBook(this.dataset.bid)">↩ Return</button>'
+              + '</div></div>';
+          }).join('')
+        : '<div class="empty-state"><span class="empty-icon">📭</span><div class="empty-text">No books borrowed yet</div></div>';
+    }
+    function returnBook(bookId) {
+      var state = getLecturerState(CU.id);
+      var item  = (state.issued||[]).find(function(i){ return i.bookId===bookId; });
+      state.issued = (state.issued||[]).filter(function(i){ return i.bookId !== bookId; });
+      saveLecturerState(CU.id, state);
+      // Restore available copies
+      var books = getBooks();
+      var bidx  = books.findIndex(function(b){ return b.id===bookId; });
+      if (bidx>=0) { books[bidx].availableCopies=(books[bidx].availableCopies||0)+1; saveBooks(books); }
+      var users=getUsers(), idx=users.findIndex(function(u){ return u.id===CU.id; });
+      if(idx>=0){
+        if(users[idx].booksIssued>0) users[idx].booksIssued--;
+        var fee=(item&&item.borrowFee)||0;
+        users[idx].fine=Math.max(0,(users[idx].fine||0)-fee);
+        saveUsers(users);
+      }
+      showToast('Book returned ✅','ok'); renderIssued();
+    }
+
+    // ── FINES ──
+    function renderFines() {
+      var users=getUsers(), me=users.find(function(u){ return u.id===CU.id; })||CU;
+      var state=getLecturerState(CU.id), fine=me.fine||0;
+      var overdayDays=0;
+      (state.issued||[]).forEach(function(item){
+        var due=new Date(item.dueDate), now=new Date();
+        if(due<now) overdayDays+=Math.ceil((now-due)/(1000*60*60*24));
+      });
+      var accrued=overdayDays*2;
+      /* CO4 DOM Manipulation: update <o> element with computed fine */
+      var fineOutEl = document.getElementById('lect-fine-output');
+      if (fineOutEl) fineOutEl.textContent = (fine+accrued) > 0 ? 'Total Due: ₹'+(fine+accrued) : '';
+      document.getElementById('fines-wrap').innerHTML=
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1.25rem;margin-bottom:1.5rem">'
+        +'<div class="glass-card" style="text-align:center"><div style="font-size:2.5rem;font-weight:700;font-family:var(--font-mono);color:'+(fine>0?'var(--red)':'var(--green)')+'">₹'+fine+'</div><div style="font-size:0.8rem;color:var(--text3);margin-top:0.25rem">Outstanding Fine</div><div style="margin-top:0.6rem;font-size:0.78rem;color:var(--text2)">'+(fine>0?'⚠️ Visit library counter':'✅ Account is clear')+'</div></div>'
+        +'<div class="glass-card" style="text-align:center"><div style="font-size:2.5rem;font-weight:700;font-family:var(--font-mono);color:'+(accrued>0?'var(--amber)':'var(--green)')+'">₹'+accrued+'</div><div style="font-size:0.8rem;color:var(--text3);margin-top:0.25rem">Accruing (Overdue)</div><div style="margin-top:0.6rem;font-size:0.78rem;color:var(--text2)">'+(overdayDays>0?overdayDays+' day(s) × ₹2':'No overdue books')+'</div></div>'
+        +'<div class="glass-card" style="text-align:center"><div style="font-size:2.5rem;font-weight:700;font-family:var(--font-mono);color:#9b59ff">'+state.issued.length+'</div><div style="font-size:0.8rem;color:var(--text3);margin-top:0.25rem">Books Borrowed</div><div style="margin-top:0.6rem;font-size:0.78rem;color:var(--text2)">Rate: ₹2/day overdue</div></div></div>'
+        +'<div class="glass-card" style="padding:0;overflow:hidden">'
+        +'<div style="padding:1rem 1.5rem;border-bottom:1px solid var(--border)"><h2 style="font-size:0.95rem;font-weight:700">📋 Book-wise Due Status</h2></div>'
+        +'<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Book</th><th>Issued</th><th>Due Date</th><th>Status</th><th>Fine</th></tr></thead><tbody>'
+        +(state.issued.length ? state.issued.map(function(item){
+            var b=getBooks().find(function(x){ return x.id===item.bookId; }); if(!b) return '';
+            var due=new Date(item.dueDate),now=new Date(),od=due<now?Math.ceil((now-due)/(1000*60*60*24)):0;
+            return '<tr class="'+(od>0?'overdue-row':'')+'">'
+              +'<td>'+b.cover+' <strong>'+b.title+'</strong></td>'
+              +'<td style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text3)">'+item.issueDate+'</td>'
+              +'<td style="font-family:var(--font-mono);font-size:0.78rem;color:'+(od>0?'var(--red)':'var(--text3)')+'">'+item.dueDate+'</td>'
+              +'<td><span class="badge '+(od>0?'badge-red':'badge-green')+'">'+(od>0?'OVERDUE':'ON TIME')+'</span></td>'
+              +'<td class="'+(od>0?'fine-due':'fine-ok')+'">₹'+(od*2)+'</td></tr>';
+          }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:2rem">No books borrowed</td></tr>')
+        +'</tbody></table></div></div>';
+    }
+
+    // ── SUBJECTS ──
+    var subjBranch='CSE', subjYear=1, subjMode='list', subjCurrent=null;
+    function renderSubjects() {
+      document.querySelectorAll('#subj-branch-tabs .tab-btn').forEach(function(b){ b.classList.toggle('active', b.textContent.includes(subjBranch)); });
+      document.querySelectorAll('#subj-year-tabs .tab-btn').forEach(function(b){ b.classList.toggle('active', b.textContent.includes('Year '+subjYear)); });
+      if (subjMode==='list') renderSubjList(); else renderSubjBooks();
+    }
+    function selBranch(b) { subjBranch=b; subjMode='list'; subjCurrent=null; renderSubjects(); }
+    function selYear(y)   { subjYear=y;  subjMode='list'; subjCurrent=null; renderSubjects(); }
+
+    function renderSubjList() {
+      document.getElementById('subj-back-row').style.display='none';
+      var data = getLectSubjects();
+      var list = (data[subjBranch] && data[subjBranch][subjYear]) || [];
+      document.getElementById('subj-container').innerHTML = list.length
+        ? '<div class="subj-grid">'+list.map(function(s){
+            var cnt = getSubjectBookIds(subjBranch, subjYear, s.id).length;
+            return '<div class="subj-card" data-sid="'+s.id+'" data-sname="'+s.name+'" data-sicon="'+s.icon+'" data-scode="'+s.code+'" onclick="drillSubj(this)">'
+              +'<span style="font-size:1.8rem;display:block;margin-bottom:0.5rem">'+s.icon+'</span>'
+              +'<span class="pu">'+s.code+'</span>'
+              +'<div style="font-size:0.875rem;font-weight:700;margin:0.35rem 0 0.25rem;line-height:1.3">'+s.name+'</div>'
+              +'<details><summary style="font-size:0.72rem;color:var(--text3);cursor:pointer;list-style:none">About ▸</summary><div style="font-size:0.7rem;color:var(--text3);margin-top:0.25rem;line-height:1.5">'+s.desc+'</div></details>'
+              +'<div style="margin-top:0.6rem;font-size:0.72rem;color:#9b59ff">📚 '+(cnt>0?cnt+' book'+(cnt!==1?'s':'')+' assigned':'View books')+' →</div>'
+              +'</div>';
+          }).join('')+'</div>'
+        : '<div class="empty-state"><span class="empty-icon">📭</span><div class="empty-text">No subjects found</div></div>';
+    }
+
+    function drillSubj(el) {
+      subjCurrent = { id:el.dataset.sid, name:el.dataset.sname, icon:el.dataset.sicon, code:el.dataset.scode };
+      subjMode = 'drill';
+      renderSubjBooks();
+    }
+
+    function renderSubjBooks() {
+      document.getElementById('subj-back-row').style.display = 'flex';
+      document.getElementById('subj-drill-title').textContent = subjCurrent.icon+' '+subjCurrent.name+' · '+subjBranch+' Year '+subjYear;
+      var assignedIds = getSubjectBookIds(subjBranch, subjYear, subjCurrent.id);
+      var allBooks    = getBooks();
+      var state       = getLecturerState(CU.id);
+
+      if (!assignedIds.length) {
+        document.getElementById('subj-container').innerHTML =
+          '<div style="background:rgba(255,179,71,0.08);border:1px solid rgba(255,179,71,0.25);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem;font-size:0.85rem;color:var(--amber)">ℹ️ The librarian hasn\'t assigned books to this subject yet.</div>'
+          +'<div class="lect-books-grid">'+allBooks.filter(function(b){ return b.category==='Programming'||b.category==='Academic'; }).slice(0,6).map(function(b){ return bookCard(b,state); }).join('')+'</div>';
+        return;
+      }
+      var books = assignedIds.map(function(id){ return allBooks.find(function(b){ return b.id===id; }); }).filter(Boolean);
+      document.getElementById('subj-container').innerHTML = '<div class="lect-books-grid">'+books.map(function(b){ return bookCard(b,state); }).join('')+'</div>';
+    }
+
+    function backToSubjects() { subjMode='list'; subjCurrent=null; renderSubjList(); }
+
+    // ── SUGGEST ──
+    function renderSuggest() {
+      var all = getSuggestions().filter(function(s){ return s.lecturerId===CU.id; });
+      var pend = all.filter(function(s){ return s.status==='pending'; }).length;
+      var pb = document.getElementById('pend-badge');
+      if(pb){ pb.textContent=pend; pb.style.display=pend>0?'':'none'; }
+      document.getElementById('sugg-stats').innerHTML=[
+        {icon:'💡',val:all.length,lbl:'Total'},
+        {icon:'⏳',val:pend,lbl:'Pending'},
+        {icon:'✅',val:all.filter(function(s){ return s.status==='approved'; }).length,lbl:'Approved'},
+        {icon:'❌',val:all.filter(function(s){ return s.status==='rejected'; }).length,lbl:'Rejected'}
+      ].map(function(s){ return '<div class="stat-card"><span class="stat-icon">'+s.icon+'</span><div class="stat-val">'+s.val+'</div><div class="stat-lbl">'+s.lbl+'</div></div>'; }).join('');
+      document.getElementById('sugg-history').innerHTML = all.length
+        ? all.slice().reverse().map(suggRowHTML).join('')
+        : '<div class="empty-state"><span class="empty-icon">💡</span><div class="empty-text">No suggestions yet</div></div>';
+    }
+    function suggRowHTML(s) {
+      var badgeCls = s.status==='approved' ? 'sugg-badge-a' : s.status==='rejected' ? 'sugg-badge-r' : 'sugg-badge-p';
+      /* CO5 Semantic: <article> for self-contained suggestion item */
+      return '<article class="sugg-card" role="listitem">'
+        +'<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.45rem">'
+        +'<span class="'+badgeCls+'">'+s.status.toUpperCase()+'</span>'
+        +'<time datetime="'+s.date+'" style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text3)">'+s.date+'</time></div>'
+        +'<div style="font-size:0.9rem;font-weight:700;margin-bottom:0.2rem">📚 '+sanitize(s.bookTitle)+'</div>'
+        +'<div style="font-size:0.78rem;color:var(--text3);margin-bottom:0.35rem">by '+sanitize(s.bookAuthor||'N/A')+' · '+s.category+'</div>'
+        +'<div style="font-size:0.8rem;color:var(--text2)">'+sanitize(s.note||'—')+'</div>'
+        +(s.librarianReply?'<div class="reply-box">📋 Librarian: '+sanitize(s.librarianReply)+'</div>':'')
+        +'</article>';
+    }
+    function submitSugg() {
+      var title = document.getElementById('sg-title').value.trim();
+      if (!title) { showToast('Book title is required','err'); return; }
+      var list = getSuggestions();
+      /* CO5 Security: sanitize all user inputs before saving to localStorage */
+      list.push({ id:'sug_'+Date.now(), lecturerId:CU.id, lecturerName:sanitize(CU.name||CU.id),
+        bookTitle:sanitize(title), bookAuthor:sanitize(document.getElementById('sg-author').value.trim()),
+        category:document.getElementById('sg-cat').value,
+        note:sanitize(document.getElementById('sg-note').value.trim()),
+        status:'pending', date:new Date().toISOString().slice(0,10), librarianReply:'' });
+      saveSuggestions(list);
+      document.getElementById('sg-title').value='';
+      document.getElementById('sg-author').value='';
+      document.getElementById('sg-note').value='';
+      showToast('Suggestion sent to librarian ✅','ok'); renderSuggest();
+    }
+
+    // ── PROFILE ──
+    function renderProfile() {
+      var users=getUsers(), me=users.find(function(u){ return u.id===CU.id; })||CU;
+      var state=getLecturerState(CU.id), fine=me.fine||0;
+      document.getElementById('prof-av').textContent=(me.name||'L')[0].toUpperCase();
+      document.getElementById('prof-nm').textContent=me.name||'Lecturer';
+      document.getElementById('prof-stats').innerHTML=[
+        ['Lecturer ID',me.id],['Email',me.email||'N/A'],['Dept',me.dept||'N/A'],
+        ['Joined',me.joinDate||'N/A'],['Borrowed',state.issued.length],['Status',me.status||'active']
+      ].map(function(p){ return '<li><span class="ps-label">'+p[0]+'</span><span class="ps-val">'+p[1]+'</span></li>'; }).join('');
+      document.getElementById('prof-fine').innerHTML=
+        '<div style="text-align:center;padding:1.25rem 0">'
+        +'<div style="font-size:3rem;font-weight:700;font-family:var(--font-mono);color:'+(fine>0?'var(--red)':'var(--green)')+'">₹'+fine+'</div>'
+        +'<div style="font-size:0.85rem;color:var(--text3);margin-top:0.25rem">'+(fine>0?'Outstanding Fine':'No fine due')+'</div></div>'
+        +'<div style="background:'+(fine>0?'var(--red-dim)':'var(--green-dim)')+';border:1px solid '+(fine>0?'rgba(255,77,109,0.3)':'rgba(0,255,136,0.3)')+';border-radius:10px;padding:1rem;font-size:0.85rem;color:'+(fine>0?'var(--red)':'var(--green)')+';">'
+        +(fine>0?'⚠️ Please visit the library counter to pay ₹'+fine+'.':'✅ No outstanding fines.')+'</div>';
+      var pg=document.getElementById('prof-grid');
+      if(pg) pg.style.gridTemplateColumns=window.innerWidth<700?'1fr':'1fr 1fr';
+    }
+
+    // ── INIT ──
+    /* CO4 Event Handling: global error handler catches uncaught JS errors */
+    window.addEventListener('error', function(e) {
+      console.error('[DSL Lecturer Error]', e.message);
+      showToast('Something went wrong: ' + e.message, 'err');
+    });
+    /* CO4 Custom Event: listen for bookBorrowed fired by confirmBorrow */
+    document.addEventListener('bookBorrowed', function(e) {
+      console.log('[CO4 CustomEvent] bookBorrowed received:', e.detail);
+      var pb = document.getElementById('pend-badge');
+      // Update dashboard stats reactively on borrow
+      if (document.getElementById('sec-dashboard').classList.contains('active')) renderDashboard();
+    });
+    renderDashboard();
+    /* ══════════════════════════════════════════════════
+       CO4 — EVENT HANDLING (Lecturer)
+    ══════════════════════════════════════════════════ */
+    document.addEventListener('DOMContentLoaded', function() {
+      /* CO4 Keyboard: Escape closes modals */
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.modal-overlay.open').forEach(function(m){
+            m.classList.remove('open');
+          });
+        }
+      });
+
+      /* CO4 Event Delegation: borrow grid handles all card clicks */
+      var grid = document.getElementById('borrow-grid');
+      if (grid) {
+        grid.addEventListener('click', function(e) {
+          var btn = e.target.closest('button[data-bid]');
+          if (btn && !btn.disabled) {
+            e.stopPropagation();
+            openBorrowModal(btn.dataset.bid);
+          }
+        });
+      }
+
+      /* CO4 Focus events on search */
+      var srch = document.getElementById('borrow-search');
+      if (srch) {
+        srch.addEventListener('focus', function(){ this.parentElement.style.borderColor='rgba(155,89,255,0.6)'; });
+        srch.addEventListener('blur',  function(){ this.parentElement.style.borderColor=''; });
+        srch.addEventListener('input', function(){ renderBorrow(); });
+      }
+    });
+
+  </script>
+</body>
+</html>
